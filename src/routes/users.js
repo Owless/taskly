@@ -8,10 +8,10 @@ const {
   validatePagination 
 } = require('../middleware/validation');
 const rateLimit = require('../middleware/rateLimit');
-const { userSettingsSchema } = require('../utils/validators');
+const { schemas } = require('../utils/validators');
 
 // Middleware для валидации
-const validateUserSettings = createValidationMiddleware(userSettingsSchema);
+const validateUserSettings = createValidationMiddleware(schemas.userSettings);
 
 /**
  * @route GET /api/users/profile
