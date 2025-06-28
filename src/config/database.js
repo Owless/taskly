@@ -1,23 +1,27 @@
 // src/config/database.js
-// Простое подключение к существующей Supabase базе данных
+// Подключение к Supabase только через переменные окружения
 
 const { createClient } = require('@supabase/supabase-js');
-const { Pool } = require('pg');
 
-// Проверяем наличие необходимых переменных
+// Получаем переменные окружения
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const databaseUrl = process.env.DATABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseServiceKey || !databaseUrl) {
-  console.error('❌ Отсутствуют необходимые переменные окружения для базы данных:');
-  console.error('- SUPABASE_URL:', !!supabaseUrl);
-  console.error('- SUPABASE_SERVICE_ROLE_KEY:', !!supabaseServiceKey);
-  console.error('- DATABASE_URL:', !!databaseUrl);
+// Проверяем обязательные переменные
+if (!supabaseUrl) {
+  console.error('❌ SUPABASE_URL не установлен в переменных окружения');
   process.exit(1);
 }
 
-// Supabase клиент с service role (полные права для backend)
+if (!supabaseServiceKey) {
+  console.error('❌ SUPABASE_SERVICE_ROLE_KEY не установлен в переменных окружения');
+  process.exit(1);
+}
+
+console.log('✅ Переменные окружения Supabase загружены');
+
+// Создаем Supabase клиент с service role для полного доступа
 const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
@@ -25,71 +29,139 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey, {
   }
 });
 
-// Прямое подключение к PostgreSQL
-const pool = new Pool({
-  connectionString: databaseUrl,
-  ssl: {
-    rejectUnauthorized: false
-  },
-  max: 10, // максимум подключений
-  idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000,
-});
-
-// Логирование подключений
-pool.on('connect', () => {
-  console.log('✅ Подключение к Supabase PostgreSQL установлено');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ Ошибка подключения к PostgreSQL:', err.message);
-});
-
-// Основная функция для SQL запросов
-const query = async (text, params = []) => {
+// Основная функция для работы с базой данных
+const query = async (tableName, operation, data = null, filters = null) => {
   const start = Date.now();
   
   try {
-    const result = await pool.query(text, params);
+    let queryBuilder = supabase.from(tableName);
+    
+    switch (operation) {
+      case 'select':
+        queryBuilder = queryBuilder.select(data || '*');
+        if (filters) {
+          Object.entries(filters).forEach(([key, value]) => {
+            queryBuilder = queryBuilder.eq(key, value);
+          });
+        }
+        break;
+        
+      case 'insert':
+        queryBuilder = queryBuilder.insert(data);
+        break;
+        
+      case 'update':
+        queryBuilder = queryBuilder.update(data);
+        if (filters) {
+          Object.entries(filters).forEach(([key, value]) => {
+            queryBuilder = queryBuilder.eq(key, value);
+          });
+        }
+        break;
+        
+      case 'delete':
+        if (filters) {
+          Object.entries(filters).forEach(([key, value]) => {
+            queryBuilder = queryBuilder.eq(key, value);
+          });
+        }
+        queryBuilder = queryBuilder.delete();
+        break;
+        
+      default:
+        throw new Error(`Неподдерживаемая операция: ${operation}`);
+    }
+    
+    const { data: result, error } = await queryBuilder;
+    
+    if (error) {
+      throw error;
+    }
+    
     const duration = Date.now() - start;
     
-    // Логируем только в development режиме
+    // Логируем в development
     if (process.env.NODE_ENV === 'development' && process.env.DEBUG_SQL === 'true') {
-      console.log(`🔍 SQL (${duration}ms): ${text.substring(0, 60)}...`);
+      console.log(`🔍 Supabase ${operation} on ${tableName} (${duration}ms)`);
     }
     
     return result;
+    
   } catch (error) {
-    console.error('❌ SQL Error:', {
-      query: text.substring(0, 100) + '...',
+    console.error('❌ Ошибка Supabase запроса:', {
+      table: tableName,
+      operation,
       error: error.message
     });
     throw error;
   }
 };
 
-// Функция для установки контекста пользователя (для Row Level Security)
+// Вспомогательные функции для частых операций
+const findUserByTelegramId = async (telegramId) => {
+  return await query('users', 'select', '*', { telegram_id: telegramId });
+};
+
+const createUser = async (userData) => {
+  return await query('users', 'insert', userData);
+};
+
+const getUserTasks = async (userId, filters = {}) => {
+  const queryFilters = { user_id: userId, ...filters };
+  return await query('tasks', 'select', '*', queryFilters);
+};
+
+const createTask = async (taskData) => {
+  return await query('tasks', 'insert', taskData);
+};
+
+const updateTask = async (taskId, updateData) => {
+  return await query('tasks', 'update', updateData, { id: taskId });
+};
+
+const deleteTask = async (taskId) => {
+  return await query('tasks', 'delete', null, { id: taskId });
+};
+
+// Функция для установки контекста пользователя (для RLS)
 const setUserContext = async (userId) => {
   if (!userId) return;
   
   try {
-    await query('SELECT set_config($1, $2, true)', [
-      'app.current_user_id', 
-      userId.toString()
-    ]);
+    // Используем Supabase RPC для установки контекста
+    const { error } = await supabase.rpc('set_config', {
+      setting_name: 'app.current_user_id',
+      setting_value: userId.toString(),
+      is_local: true
+    });
+    
+    if (error) {
+      console.warn('⚠️ Не удалось установить пользовательский контекст:', error.message);
+    }
   } catch (error) {
-    console.warn('⚠️ Не удалось установить пользовательский контекст:', error.message);
+    console.warn('⚠️ Ошибка установки контекста:', error.message);
   }
 };
 
-// Проверка здоровья базы данных
+// Проверка состояния подключения
 const healthCheck = async () => {
   try {
-    const result = await query('SELECT NOW() as current_time');
+    const { data, error } = await supabase
+      .from('users')
+      .select('count(*)')
+      .limit(1);
+    
+    if (error) {
+      return {
+        status: 'error',
+        error: error.message
+      };
+    }
+    
     return {
       status: 'ok',
-      timestamp: result.rows[0].current_time,
-      connections: pool.totalCount
+      timestamp: new Date().toISOString(),
+      supabase_url: supabaseUrl
     };
   } catch (error) {
     return {
@@ -99,54 +171,57 @@ const healthCheck = async () => {
   }
 };
 
-// Проверка существования таблиц при запуске
+// Проверка существования таблиц
 const checkTables = async () => {
   try {
-    const result = await query(`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' 
-      AND table_name IN ('users', 'tasks', 'donations', 'notifications')
-      ORDER BY table_name;
-    `);
-    
-    const existingTables = result.rows.map(row => row.table_name);
     const requiredTables = ['users', 'tasks', 'donations', 'notifications'];
+    const results = [];
     
-    const missingTables = requiredTables.filter(table => !existingTables.includes(table));
+    for (const table of requiredTables) {
+      try {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .limit(1);
+        
+        if (error) {
+          console.error(`❌ Таблица ${table} недоступна:`, error.message);
+          results.push({ table, exists: false, error: error.message });
+        } else {
+          results.push({ table, exists: true });
+        }
+      } catch (err) {
+        results.push({ table, exists: false, error: err.message });
+      }
+    }
+    
+    const missingTables = results.filter(r => !r.exists);
     
     if (missingTables.length > 0) {
-      console.error('❌ Отсутствуют таблицы:', missingTables);
-      console.error('💡 Убедитесь, что SQL схема была применена к базе данных');
+      console.error('❌ Отсутствуют или недоступны таблицы:', 
+        missingTables.map(t => t.table).join(', '));
       return false;
     }
     
-    console.log('✅ Все необходимые таблицы найдены:', existingTables);
+    console.log('✅ Все необходимые таблицы доступны:', 
+      results.map(r => r.table).join(', '));
     return true;
+    
   } catch (error) {
     console.error('❌ Ошибка проверки таблиц:', error.message);
     return false;
   }
 };
 
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('🔄 Закрываем подключения к базе данных...');
-  await pool.end();
-  console.log('✅ Подключения закрыты');
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('🔄 Получен SIGTERM, закрываем подключения...');
-  await pool.end();
-  process.exit(0);
-});
-
 module.exports = {
   supabase,
-  pool,
   query,
+  findUserByTelegramId,
+  createUser,
+  getUserTasks,
+  createTask,
+  updateTask,
+  deleteTask,
   setUserContext,
   healthCheck,
   checkTables
