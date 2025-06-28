@@ -137,7 +137,7 @@ class TasklyApp {
         const userInitials = document.getElementById('userInitials');
         
         // Используем локальный логотип
-        const logoUrl = './logo2.png';
+        const logoUrl = '/logo2.png';
         
         if (logoImg && userInitials) {
             logoImg.src = logoUrl;
