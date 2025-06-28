@@ -548,8 +548,8 @@ body {
 }
 
 .task-checkbox {
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     border: 3px solid var(--border);
     border-radius: 50%;
     cursor: pointer;
@@ -579,7 +579,7 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     color: white;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 800;
 }
 
@@ -772,7 +772,7 @@ body {
 .support-form {
     display: flex;
     gap: var(--spacing);
-    margin-bottom: var(--spacing-large);
+    margin-bottom: var(--spacing);
 }
 
 .amount-input-group {
@@ -784,7 +784,7 @@ body {
     width: 100%;
     border: 2px solid var(--border);
     background: var(--surface);
-    padding: 16px 50px 16px 20px;
+    padding: 18px 50px 18px 20px;
     border-radius: var(--radius);
     font-size: 16px;
     font-weight: 600;
@@ -796,6 +796,17 @@ body {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+    transform: translateY(-2px);
+}
+
+.amount-input::placeholder {
+    color: var(--text-tertiary);
+    font-weight: 400;
+}
+
+.amount-input.error {
+    border-color: var(--danger);
+    box-shadow: 0 0 0 4px rgba(255, 59, 48, 0.1);
 }
 
 .currency {
@@ -806,10 +817,11 @@ body {
     font-size: 18px;
     pointer-events: none;
     color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .donate-btn {
-    padding: 16px 24px;
+    padding: 18px 28px;
     border: none;
     background: var(--gradient-primary);
     color: white;
@@ -823,6 +835,9 @@ body {
     align-items: center;
     gap: var(--spacing-small);
     box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+    white-space: nowrap;
+    min-width: 140px;
+    justify-content: center;
 }
 
 .donate-btn:not(:disabled) {
@@ -834,36 +849,29 @@ body {
     box-shadow: 0 8px 24px rgba(0, 122, 255, 0.4);
 }
 
-.quick-amounts {
-    display: flex;
-    gap: var(--spacing-small);
-    justify-content: center;
-    flex-wrap: wrap;
+.donate-btn:not(:disabled):active {
+    transform: translateY(0);
 }
 
-.quick-amount {
-    padding: 12px 20px;
-    border: 2px solid var(--border);
-    background: var(--surface);
-    color: var(--text-primary);
-    border-radius: var(--radius);
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
+.donate-btn.loading {
+    pointer-events: none;
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
-.quick-amount:hover {
-    border-color: var(--primary);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px var(--shadow);
+.donate-btn.loading svg {
+    animation: spin 1s linear infinite;
 }
 
-.quick-amount.selected {
-    background: var(--primary);
-    color: white;
-    border-color: var(--primary);
-    box-shadow: 0 4px 16px rgba(0, 122, 255, 0.3);
+.support-info {
+    text-align: center;
+}
+
+.support-info p {
+    color: var(--text-secondary);
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0.8;
 }
 
 /* Модальное окно */
@@ -1085,12 +1093,10 @@ body {
         flex-direction: column;
     }
     
-    .quick-amounts {
-        justify-content: stretch;
-    }
-    
-    .quick-amount {
-        flex: 1;
+    .donate-btn {
+        justify-content: center;
+        min-width: auto;
+        padding: 16px 24px;
     }
     
     .modal {
@@ -1106,8 +1112,8 @@ body {
     }
     
     .task-checkbox {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
     }
 }
 
