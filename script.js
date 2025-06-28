@@ -157,77 +157,174 @@ class TasklyApp {
         });
     }
 
-setupDonationListeners() {
-    const amountInput = document.getElementById('donationAmount');
-    const donateBtn = document.getElementById('donateBtn');
-    
-    amountInput.addEventListener('input', (e) => {
-        const amount = parseInt(e.target.value);
-        donateBtn.disabled = !amount || amount < 1 || amount > 2500;
-    });
-    
-    donateBtn.addEventListener('click', () => {
-        const amount = parseInt(amountInput.value);
-        if (amount >= 1 && amount <= 2500) {
-            this.donate(amount);
-        }
-    });
-}
-
-async donate(amount) {
-    try {
-        // Показываем загрузку
+    setupDonationListeners() {
+        const amountInput = document.getElementById('donationAmount');
         const donateBtn = document.getElementById('donateBtn');
-        const originalText = donateBtn.innerHTML;
-        donateBtn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
-                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2"/>
-            </svg>
-            Создаем платеж...
-        `;
-        donateBtn.disabled = true;
-
-        // Создаем инвойс через API
-        const response = await fetch('/api/create-invoice', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                telegramId: this.currentUser.telegram_id,
-                amount: amount
-            })
+        
+        amountInput.addEventListener('input', (e) => {
+            const amount = parseInt(e.target.value);
+            donateBtn.disabled = !amount || amount < 1 || amount > 2500;
+            
+            // Очищаем ошибки при вводе
+            if (amount >= 1 && amount <= 2500) {
+                amountInput.classList.remove('error');
+            }
         });
+        
+        // Валидация при потере фокуса
+        amountInput.addEventListener('blur', (e) => {
+            const amount = parseInt(e.target.value);
+            if (e.target.value && (amount < 1 || amount > 2500)) {
+                e.target.classList.add('error');
+                this.showNotification('Сумма должна быть от 1 до 2500 звезд', 'error');
+            }
+        });
+        
+        donateBtn.addEventListener('click', () => {
+            const amount = parseInt(amountInput.value);
+            if (amount >= 1 && amount <= 2500) {
+                this.donate(amount);
+            }
+        });
+    }
 
-        const result = await response.json();
+    async donate(amount) {
+        if (!window.Telegram?.WebApp) {
+            this.showNotification('Платежи доступны только в Telegram', 'error');
+            return;
+        }
 
-        if (result.success) {
-            this.showNotification(`Платеж на ${amount} ⭐ создан! Проверьте чат с ботом.`, 'success');
+        try {
+            // Показываем загрузку
+            this.setDonateButtonLoading(true);
+
+            // Получаем данные для создания инвойса
+            const response = await fetch('/api/create-invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegramId: this.currentUser.telegram_id,
+                    amount: amount
+                })
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error);
+            }
+
+            // Создаем инвойс через Telegram WebApp API
+            const tg = window.Telegram.WebApp;
             
-            // Очищаем форму
-            document.getElementById('donationAmount').value = '';
-            
-            // Хапtic feedback
-            this.hapticFeedback('light');
+            this.showNotification('Открываем форму оплаты...', 'success');
+
+            // Используем Telegram WebApp для показа инвойса
+            tg.openInvoice(result.invoiceData.payload, (status) => {
+                this.handlePaymentResult(status, amount, result.invoiceData.payload);
+            });
+
+        } catch (error) {
+            console.error('Donation error:', error);
+            this.showNotification(error.message || 'Ошибка при создании платежа', 'error');
+        } finally {
+            this.setDonateButtonLoading(false);
+        }
+    }
+
+    handlePaymentResult(status, amount, payload) {
+        console.log('Payment result:', status);
+
+        switch (status) {
+            case 'paid':
+                this.onPaymentSuccess(amount, payload);
+                break;
+            case 'cancelled':
+                this.showNotification('Платеж отменен', 'error');
+                break;
+            case 'failed':
+                this.showNotification('Ошибка при оплате', 'error');
+                break;
+            case 'pending':
+                this.showNotification('Платеж в обработке...', 'success');
+                break;
+            default:
+                this.showNotification('Неизвестный статус платежа', 'error');
+        }
+    }
+
+    async onPaymentSuccess(amount, payload) {
+        try {
+            // Валидируем платеж на сервере
+            const response = await fetch('/api/validate-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    telegramId: this.currentUser.telegram_id,
+                    amount: amount,
+                    payload: payload
+                })
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                this.showNotification(`Спасибо за поддержку! ${amount} ⭐`, 'success');
+                
+                // Очищаем форму
+                document.getElementById('donationAmount').value = '';
+                document.getElementById('donateBtn').disabled = true;
+                
+                // Haptic feedback
+                this.hapticFeedback('heavy');
+                
+                // Показываем конфетти (если доступно)
+                if (window.Telegram?.WebApp?.showPopup) {
+                    window.Telegram.WebApp.showPopup({
+                        title: 'Спасибо! 🎉',
+                        message: `Ваше пожертвование в ${amount} ⭐ очень важно для развития проекта!`,
+                        buttons: [{ type: 'ok', text: 'Отлично!' }]
+                    });
+                }
+                
+            } else {
+                throw new Error(result.error);
+            }
+
+        } catch (error) {
+            console.error('Payment validation error:', error);
+            this.showNotification('Ошибка валидации платежа', 'error');
+        }
+    }
+
+    setDonateButtonLoading(loading) {
+        const donateBtn = document.getElementById('donateBtn');
+        
+        if (loading) {
+            donateBtn.classList.add('loading');
+            donateBtn.disabled = true;
+            donateBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                    <path d="M12 1v6m0 10v6m11-7h-6M6 12H0" stroke="currentColor" stroke-width="2"/>
+                </svg>
+                Обработка...
+            `;
             
         } else {
-            throw new Error(result.error);
+            donateBtn.classList.remove('loading');
+            donateBtn.innerHTML = `
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
+                </svg>
+                Поддержать
+            `;
+            
+            // Проверяем, нужно ли снова активировать кнопку
+            const amount = parseInt(document.getElementById('donationAmount').value);
+            donateBtn.disabled = !amount || amount < 1 || amount > 2500;
         }
-
-    } catch (error) {
-        console.error('Donation error:', error);
-        this.showNotification(error.message || 'Ошибка при создании платежа', 'error');
-    } finally {
-        // Восстанавливаем кнопку
-        const donateBtn = document.getElementById('donateBtn');
-        donateBtn.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
-            </svg>
-            Поддержать
-        `;
-        donateBtn.disabled = !document.getElementById('donationAmount').value;
     }
-}
 
     toggleExpandedOptions() {
         const options = document.getElementById('expandedOptions');
