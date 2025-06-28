@@ -11,7 +11,34 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="app" class="app">
+    <!-- Блокировка доступа -->
+    <div id="accessDenied" class="access-denied">
+        <div class="access-content">
+            <div class="telegram-icon">
+                <svg width="80" height="80" viewBox="0 0 24 24" fill="none">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="#229ED9"/>
+                </svg>
+            </div>
+            <h2>Доступ ограничен</h2>
+            <p>Это приложение работает только в Telegram</p>
+            <div class="access-steps">
+                <div class="step">
+                    <span class="step-number">1</span>
+                    <span>Найдите бота @TasklyBot в Telegram</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">2</span>
+                    <span>Нажмите /start</span>
+                </div>
+                <div class="step">
+                    <span class="step-number">3</span>
+                    <span>Откройте приложение</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="app" class="app" style="display: none;">
         <!-- Загрузка -->
         <div id="loading" class="loading-screen">
             <div class="loading-spinner">
@@ -54,7 +81,7 @@
                         >
                         <button id="addTaskBtn" class="add-btn" disabled>
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
                             </svg>
                         </button>
                     </div>
@@ -100,7 +127,7 @@
                         Все
                     </button>
                     <button class="filter-btn" data-filter="completed">
-                        <span class="filter-icon">✅</span>
+                        <span class="filter-icon">📁</span>
                         Архив
                     </button>
                 </div>
@@ -109,14 +136,15 @@
             <!-- Список задач -->
             <section class="tasks-section">
                 <div id="tasksList" class="tasks-list"></div>
+                <div id="archiveList" class="archive-list"></div>
             </section>
 
             <!-- Пустое состояние -->
             <div id="emptyState" class="empty-state" style="display: none;">
                 <div class="empty-illustration">
                     <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
-                        <circle cx="60" cy="60" r="50" fill="#f0f2f5"/>
-                        <path d="M40 60h40M60 40v40" stroke="#8b9dc3" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="60" cy="60" r="50" fill="var(--surface-secondary)"/>
+                        <path d="M40 60h40M60 40v40" stroke="var(--primary)" stroke-width="3" stroke-linecap="round"/>
                     </svg>
                 </div>
                 <h3 id="emptyTitle">Все задачи выполнены! 🎉</h3>
@@ -126,8 +154,8 @@
             <!-- Поддержка проекта -->
             <section class="support-section">
                 <div class="support-card">
-                    <div class="support-content">
-                        <div class="support-icon">❤️</div>
+                    <div class="support-header">
+                        <div class="support-icon">💙</div>
                         <div class="support-text">
                             <h4>Нравится приложение?</h4>
                             <p>Поддержи развитие проекта</p>
@@ -139,7 +167,7 @@
                             <input 
                                 type="number" 
                                 id="donationAmount" 
-                                placeholder="Сумма" 
+                                placeholder="1-2500" 
                                 min="1" 
                                 max="2500"
                                 class="amount-input"
@@ -147,6 +175,9 @@
                             <span class="currency">⭐</span>
                         </div>
                         <button id="donateBtn" class="donate-btn" disabled>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
+                            </svg>
                             Поддержать
                         </button>
                     </div>
