@@ -157,74 +157,77 @@ class TasklyApp {
         });
     }
 
-    setupDonationListeners() {
-        const amountInput = document.getElementById('donationAmount');
-        const donateBtn = document.getElementById('donateBtn');
-        
-        amountInput.addEventListener('input', (e) => {
-            const amount = parseInt(e.target.value);
-            donateBtn.disabled = !amount || amount < 1 || amount > 2500;
-            
-            // Убираем выделение с быстрых кнопок
-            document.querySelectorAll('.quick-amount').forEach(btn => {
-                btn.classList.remove('selected');
-            });
-        });
-        
-        donateBtn.addEventListener('click', () => {
-            const amount = parseInt(amountInput.value);
-            if (amount >= 1 && amount <= 2500) {
-                this.donate(amount);
-            }
-        });
-        
-        // Быстрые суммы
-        document.querySelectorAll('.quick-amount').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const amount = parseInt(e.target.dataset.amount);
-                amountInput.value = amount;
-                donateBtn.disabled = false;
-                
-                // Выделяем выбранную кнопку
-                document.querySelectorAll('.quick-amount').forEach(b => b.classList.remove('selected'));
-                e.target.classList.add('selected');
-            });
-        });
-    }
+setupDonationListeners() {
+    const amountInput = document.getElementById('donationAmount');
+    const donateBtn = document.getElementById('donateBtn');
+    
+    amountInput.addEventListener('input', (e) => {
+        const amount = parseInt(e.target.value);
+        donateBtn.disabled = !amount || amount < 1 || amount > 2500;
+    });
+    
+    donateBtn.addEventListener('click', () => {
+        const amount = parseInt(amountInput.value);
+        if (amount >= 1 && amount <= 2500) {
+            this.donate(amount);
+        }
+    });
+}
 
-    async donate(amount) {
-        try {
-            this.showNotification(`Создаем платеж на ${amount} ⭐...`, 'success');
-            
-            // Отправляем команду боту через WebApp
-            const botCommand = `/donate_${amount}`;
-            
-            // Используем sendData для отправки команды боту
-            if (window.Telegram?.WebApp?.sendData) {
-                window.Telegram.WebApp.sendData(JSON.stringify({
-                    action: 'donate',
-                    amount: amount
-                }));
-            }
-            
-            // Альтернативно, открываем бота с командой
-            if (window.Telegram?.WebApp?.openTelegramLink) {
-                const botUsername = 'TasklyBot'; // Замените на имя вашего бота
-                window.Telegram.WebApp.openTelegramLink(`https://t.me/${botUsername}?start=donate_${amount}`);
-            }
+async donate(amount) {
+    try {
+        // Показываем загрузку
+        const donateBtn = document.getElementById('donateBtn');
+        const originalText = donateBtn.innerHTML;
+        donateBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                <path d="M12 6v6l4 2" stroke="currentColor" stroke-width="2"/>
+            </svg>
+            Создаем платеж...
+        `;
+        donateBtn.disabled = true;
+
+        // Создаем инвойс через API
+        const response = await fetch('/api/create-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                telegramId: this.currentUser.telegram_id,
+                amount: amount
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            this.showNotification(`Платеж на ${amount} ⭐ создан! Проверьте чат с ботом.`, 'success');
             
             // Очищаем форму
             document.getElementById('donationAmount').value = '';
-            document.getElementById('donateBtn').disabled = true;
-            document.querySelectorAll('.quick-amount').forEach(btn => {
-                btn.classList.remove('selected');
-            });
             
-        } catch (error) {
-            console.error('Donation error:', error);
-            this.showNotification('Ошибка при создании платежа', 'error');
+            // Хапtic feedback
+            this.hapticFeedback('light');
+            
+        } else {
+            throw new Error(result.error);
         }
+
+    } catch (error) {
+        console.error('Donation error:', error);
+        this.showNotification(error.message || 'Ошибка при создании платежа', 'error');
+    } finally {
+        // Восстанавливаем кнопку
+        const donateBtn = document.getElementById('donateBtn');
+        donateBtn.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
+            </svg>
+            Поддержать
+        `;
+        donateBtn.disabled = !document.getElementById('donationAmount').value;
     }
+}
 
     toggleExpandedOptions() {
         const options = document.getElementById('expandedOptions');
