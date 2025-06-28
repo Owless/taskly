@@ -4,6 +4,11 @@ class TasklyApp {
         this.tasks = [];
         this.currentFilter = 'active';
         this.editingTaskId = null;
+        this.settings = {
+            timezone: 'auto',
+            notificationsEnabled: true,
+            soundEnabled: true
+        };
         this.init();
     }
 
@@ -16,6 +21,7 @@ class TasklyApp {
 
         this.initTelegramWebApp();
         await this.authenticate();
+        this.loadSettings();
         this.setupEventListeners();
         await this.loadTasks();
         this.render();
@@ -93,9 +99,6 @@ class TasklyApp {
         
         const initials = this.getInitials(this.currentUser.first_name, this.currentUser.last_name);
         document.getElementById('userInitials').textContent = initials;
-        
-        const greeting = this.getGreeting(this.currentUser.first_name);
-        document.getElementById('userGreeting').textContent = greeting;
     }
 
     getInitials(firstName, lastName) {
@@ -104,15 +107,22 @@ class TasklyApp {
         return first + last || 'U';
     }
 
-    getGreeting(firstName) {
-        const hour = new Date().getHours();
-        let timeGreeting = 'Привет';
-        
-        if (hour < 12) timeGreeting = 'Доброе утро';
-        else if (hour < 18) timeGreeting = 'Добрый день';
-        else timeGreeting = 'Добрый вечер';
-        
-        return `${timeGreeting}, ${firstName || 'Пользователь'}!`;
+    loadSettings() {
+        const savedSettings = localStorage.getItem('taskly_settings');
+        if (savedSettings) {
+            this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+        }
+        this.updateSettingsUI();
+    }
+
+    saveSettings() {
+        localStorage.setItem('taskly_settings', JSON.stringify(this.settings));
+    }
+
+    updateSettingsUI() {
+        document.getElementById('timezoneSelect').value = this.settings.timezone;
+        document.getElementById('notificationsEnabled').checked = this.settings.notificationsEnabled;
+        document.getElementById('soundEnabled').checked = this.settings.soundEnabled;
     }
 
     setupEventListeners() {
@@ -153,10 +163,17 @@ class TasklyApp {
             btn.addEventListener('click', (e) => this.setFilter(e.target.dataset.filter));
         });
         
-        // Модальное окно
+        // Кнопка настроек
+        document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
+        
+        // Модальное окно редактирования
         document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
         document.getElementById('saveTaskBtn').addEventListener('click', () => this.saveTask());
         document.getElementById('deleteTaskBtn').addEventListener('click', () => this.deleteTaskFromModal());
+        
+        // Модальное окно настроек
+        document.getElementById('closeSettingsModal').addEventListener('click', () => this.closeSettingsModal());
+        document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettingsFromModal());
         
         // Поддержка проекта
         this.setupDonationListeners();
@@ -167,12 +184,18 @@ class TasklyApp {
                 this.closeModal();
             }
         });
+        
+        document.getElementById('settingsModal').addEventListener('click', (e) => {
+            if (e.target.id === 'settingsModal') {
+                this.closeSettingsModal();
+            }
+        });
     }
 
     setDefaultDateTime() {
         const now = new Date();
-        now.setHours(now.getHours() + 1); // На час вперед
-        now.setMinutes(0); // Округляем до часа
+        now.setHours(now.getHours() + 1);
+        now.setMinutes(0);
         
         const dateString = now.toISOString().slice(0, 16);
         document.getElementById('taskDueDate').value = dateString;
@@ -186,13 +209,11 @@ class TasklyApp {
             const amount = parseInt(e.target.value);
             donateBtn.disabled = !amount || amount < 1 || amount > 2500;
             
-            // Очищаем ошибки при вводе
             if (amount >= 1 && amount <= 2500) {
                 amountInput.classList.remove('error');
             }
         });
         
-        // Валидация при потере фокуса
         amountInput.addEventListener('blur', (e) => {
             const amount = parseInt(e.target.value);
             if (e.target.value && (amount < 1 || amount > 2500)) {
@@ -216,15 +237,11 @@ class TasklyApp {
         }
 
         try {
-            // Показываем загрузку
             this.setDonateButtonLoading(true);
 
             const tg = window.Telegram.WebApp;
-            
-            // Генерируем уникальный payload
             const payload = `donation_${this.currentUser.telegram_id}_${Date.now()}`;
             
-            // Создаем инвойс через наш API
             const response = await fetch('/api/create-invoice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -243,7 +260,6 @@ class TasklyApp {
 
             console.log('Opening invoice in Telegram...');
             
-            // Открываем инвойс ВНУТРИ Telegram приложения
             tg.openInvoice(result.invoiceLink, (status) => {
                 console.log('Payment status:', status);
                 
@@ -269,19 +285,14 @@ class TasklyApp {
     handlePaymentSuccess(amount) {
         this.showNotification(`Спасибо за поддержку! ${amount} ⭐`, 'success');
         
-        // Очищаем форму
         document.getElementById('donationAmount').value = '';
         document.getElementById('donateBtn').disabled = true;
         
-        // Haptic feedback
         this.hapticFeedback('medium');
-        
-        // Можно добавить конфетти или другие эффекты
         this.celebratePayment();
     }
 
     celebratePayment() {
-        // Простая анимация благодарности
         const supportCard = document.querySelector('.support-card');
         supportCard.style.transform = 'scale(1.02)';
         supportCard.style.boxShadow = '0 12px 40px rgba(0, 122, 255, 0.4)';
@@ -305,7 +316,6 @@ class TasklyApp {
                 </svg>
                 Создание...
             `;
-            
         } else {
             donateBtn.classList.remove('loading');
             donateBtn.innerHTML = `
@@ -315,7 +325,6 @@ class TasklyApp {
                 Поддержать
             `;
             
-            // Проверяем, нужно ли снова активировать кнопку
             const amount = parseInt(document.getElementById('donationAmount').value);
             donateBtn.disabled = !amount || amount < 1 || amount > 2500;
         }
@@ -332,6 +341,27 @@ class TasklyApp {
             options.style.display = 'none';
             button.classList.remove('expanded');
         }
+    }
+
+    // Настройки
+    openSettings() {
+        document.getElementById('settingsModal').style.display = 'flex';
+        this.updateSettingsUI();
+    }
+
+    closeSettingsModal() {
+        document.getElementById('settingsModal').style.display = 'none';
+    }
+
+    saveSettingsFromModal() {
+        this.settings.timezone = document.getElementById('timezoneSelect').value;
+        this.settings.notificationsEnabled = document.getElementById('notificationsEnabled').checked;
+        this.settings.soundEnabled = document.getElementById('soundEnabled').checked;
+        
+        this.saveSettings();
+        this.closeSettingsModal();
+        this.showNotification('Настройки сохранены! ⚙️', 'success');
+        this.hapticFeedback('light');
     }
 
     async loadTasks() {
@@ -383,7 +413,6 @@ class TasklyApp {
                 this.showNotification('Задача добавлена! ✅', 'success');
                 this.hapticFeedback('light');
                 
-                // Скрываем главную кнопку
                 if (window.Telegram?.WebApp?.MainButton) {
                     window.Telegram.WebApp.MainButton.hide();
                 }
@@ -394,13 +423,11 @@ class TasklyApp {
         }
     }
 
-    // Получаем выбранный приоритет из радио-кнопок
     getSelectedPriority(name) {
         const selectedRadio = document.querySelector(`input[name="${name}"]:checked`);
         return selectedRadio ? selectedRadio.value : 'medium';
     }
 
-    // Устанавливаем выбранный приоритет
     setSelectedPriority(name, value) {
         const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
         if (radio) {
@@ -610,10 +637,8 @@ class TasklyApp {
         this.setSelectedPriority('taskPriority', 'medium');
         document.getElementById('addTaskBtn').disabled = true;
         
-        // Устанавливаем новое время по умолчанию
         this.setDefaultDateTime();
         
-        // Скрываем расширенные опции
         document.getElementById('expandedOptions').style.display = 'none';
         document.getElementById('toggleOptions').classList.remove('expanded');
     }
@@ -658,7 +683,6 @@ class TasklyApp {
         const tasksContainer = document.getElementById('tasksList');
         const emptyState = document.getElementById('emptyState');
 
-        // Очищаем контейнеры
         tasksContainer.innerHTML = '';
 
         if (filteredTasks.length === 0) {
@@ -670,15 +694,12 @@ class TasklyApp {
         emptyState.style.display = 'none';
 
         if (this.currentFilter === 'active') {
-            // Группируем активные задачи по времени
             const timeGroups = this.groupTasksByTime(filteredTasks);
             tasksContainer.innerHTML = timeGroups.map(group => this.renderTaskGroup(group)).join('');
         } else {
-            // Показываем обычный список для completed и all
             tasksContainer.innerHTML = filteredTasks.map(task => this.renderTask(task)).join('');
         }
         
-        // Добавляем обработчики событий
         this.attachTaskEventListeners();
     }
 
@@ -740,7 +761,6 @@ class TasklyApp {
     }
 
     attachTaskEventListeners() {
-        // Обработчики чекбоксов
         document.querySelectorAll('.task-checkbox').forEach(checkbox => {
             checkbox.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -749,7 +769,6 @@ class TasklyApp {
             });
         });
 
-        // Обработчики кликов по задачам
         document.querySelectorAll('.task-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 if (e.target.classList.contains('task-checkbox')) return;
@@ -785,7 +804,6 @@ class TasklyApp {
     }
 
     startPeriodicSync() {
-        // Синхронизируем данные каждые 30 секунд
         setInterval(() => {
             if (document.visibilityState === 'visible') {
                 this.loadTasks();
