@@ -126,9 +126,23 @@ class TasklyApp {
             userInitials.style.display = 'none';
             
             logoImg.onerror = () => {
+                // Если логотип не загружается, показываем иконку приложения
                 logoImg.style.display = 'none';
                 userInitials.style.display = 'flex';
+                userInitials.innerHTML = `
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
             };
+        } else {
+            // Если нет URL логотипа, показываем иконку приложения по умолчанию
+            const userInitials = document.getElementById('userInitials');
+            userInitials.innerHTML = `
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `;
         }
     }
 
@@ -162,10 +176,9 @@ class TasklyApp {
     }
 
     updateUserInfo() {
-        if (!this.currentUser) return;
-        
-        const initials = this.getInitials(this.currentUser.first_name, this.currentUser.last_name);
-        document.getElementById('userInitials').textContent = initials;
+        // Больше не обновляем инициалы пользователя в header
+        // Header теперь показывает только логотип приложения
+        return;
     }
 
     getInitials(firstName, lastName) {
