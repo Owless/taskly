@@ -3,6 +3,7 @@ const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
+const cron = require('node-cron');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,207 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 
 app.use(express.json());
 app.use(express.static('.'));
+
+// Система уведомлений
+class NotificationSystem {
+  constructor() {
+    this.setupCronJobs();
+  }
+
+  setupCronJobs() {
+    // Проверяем каждые 30 минут
+    cron.schedule('*/30 * * * *', () => {
+      this.checkUpcomingTasks();
+      this.checkOverdueTasks();
+    });
+
+    console.log('📢 Notification system started');
+  }
+
+  async checkUpcomingTasks() {
+    try {
+      const now = new Date();
+      const threeHoursLater = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+
+      // Находим задачи, которые должны быть выполнены в течение 3 часов
+      const { data: tasks, error } = await supabaseAdmin
+        .from('tasks')
+        .select(`
+          *,
+          users (telegram_id, first_name, settings)
+        `)
+        .eq('completed', false)
+        .not('due_date', 'is', null)
+        .gte('due_date', now.toISOString())
+        .lte('due_date', threeHoursLater.toISOString())
+        .is('notified_upcoming', null);
+
+      if (error) throw error;
+
+      for (const task of tasks || []) {
+        await this.sendUpcomingNotification(task);
+        
+        // Отмечаем, что уведомление было отправлено
+        await supabaseAdmin
+          .from('tasks')
+          .update({ notified_upcoming: true })
+          .eq('id', task.id);
+      }
+
+      if (tasks?.length > 0) {
+        console.log(`📅 Sent ${tasks.length} upcoming task notifications`);
+      }
+    } catch (error) {
+      console.error('Error checking upcoming tasks:', error);
+    }
+  }
+
+  async checkOverdueTasks() {
+    try {
+      const now = new Date();
+
+      // Находим просроченные задачи
+      const { data: tasks, error } = await supabaseAdmin
+        .from('tasks')
+        .select(`
+          *,
+          users (telegram_id, first_name, settings)
+        `)
+        .eq('completed', false)
+        .not('due_date', 'is', null)
+        .lt('due_date', now.toISOString())
+        .is('notified_overdue', null);
+
+      if (error) throw error;
+
+      for (const task of tasks || []) {
+        await this.sendOverdueNotification(task);
+        
+        // Отмечаем, что уведомление было отправлено
+        await supabaseAdmin
+          .from('tasks')
+          .update({ notified_overdue: true })
+          .eq('id', task.id);
+      }
+
+      if (tasks?.length > 0) {
+        console.log(`⏰ Sent ${tasks.length} overdue task notifications`);
+      }
+    } catch (error) {
+      console.error('Error checking overdue tasks:', error);
+    }
+  }
+
+  async sendUpcomingNotification(task) {
+    const user = task.users;
+    
+    // Проверяем настройки уведомлений пользователя
+    if (!user.settings?.notificationsEnabled) {
+      return;
+    }
+
+    const dueDate = new Date(task.due_date);
+    const timeString = dueDate.toLocaleString('ru-RU', {
+      timeZone: user.settings?.timezone === 'auto' ? 'Europe/Moscow' : user.settings?.timezone || 'Europe/Moscow',
+      hour: '2-digit',
+      minute: '2-digit',
+      day: '2-digit',
+      month: '2-digit'
+    });
+
+    const message = `⏰ *Напоминание о задаче*
+
+📝 *${task.title}*
+${task.description ? `\n💭 ${task.description}` : ''}
+
+🕐 Срок выполнения: *${timeString}*
+⚡ Приоритет: ${this.getPriorityEmoji(task.priority)}
+
+Время выполнить задачу! 💪`;
+
+    const keyboard = {
+      inline_keyboard: [
+        [
+          {
+            text: '✅ Выполнить',
+            callback_data: `complete_${task.id}`
+          },
+          {
+            text: '📱 Открыть приложение',
+            web_app: { url: process.env.APP_URL }
+          }
+        ]
+      ]
+    };
+
+    try {
+      await bot.sendMessage(user.telegram_id, message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } catch (error) {
+      console.error(`Failed to send upcoming notification to ${user.telegram_id}:`, error);
+    }
+  }
+
+  async sendOverdueNotification(task) {
+    const user = task.users;
+    
+    if (!user.settings?.notificationsEnabled) {
+      return;
+    }
+
+    const dueDate = new Date(task.due_date);
+    const now = new Date();
+    const overdueDays = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));
+
+    const message = `🚨 *Просроченная задача*
+
+📝 *${task.title}*
+${task.description ? `\n💭 ${task.description}` : ''}
+
+⏰ Просрочена на: *${overdueDays > 0 ? `${overdueDays} дн.` : 'несколько часов'}*
+⚡ Приоритет: ${this.getPriorityEmoji(task.priority)}
+
+Не забудьте выполнить! 🎯`;
+
+    const keyboard = {
+      inline_keyboard: [
+        [
+          {
+            text: '✅ Выполнить',
+            callback_data: `complete_${task.id}`
+          },
+          {
+            text: '📱 Открыть приложение',
+            web_app: { url: process.env.APP_URL }
+          }
+        ]
+      ]
+    };
+
+    try {
+      await bot.sendMessage(user.telegram_id, message, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } catch (error) {
+      console.error(`Failed to send overdue notification to ${user.telegram_id}:`, error);
+    }
+  }
+
+  getPriorityEmoji(priority) {
+    switch (priority) {
+      case 'high': return '🔴 Высокий';
+      case 'medium': return '🟡 Средний';
+      case 'low': return '🟢 Низкий';
+      default: return '🟡 Средний';
+    }
+  }
+}
+
+// Инициализируем систему уведомлений
+const notificationSystem = new NotificationSystem();
 
 // API для создания инвойса
 app.post('/api/create-invoice', async (req, res) => {
@@ -51,8 +253,6 @@ app.post('/api/create-invoice', async (req, res) => {
       is_flexible: false
     };
 
-    console.log('Creating invoice for:', amount, 'stars for user:', userId);
-
     const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/createInvoiceLink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,11 +262,8 @@ app.post('/api/create-invoice', async (req, res) => {
     const result = await response.json();
     
     if (!result.ok) {
-      console.error('Telegram API error:', result);
       throw new Error(result.description || 'Ошибка создания инвойса');
     }
-    
-    console.log('✅ Invoice created successfully');
     
     // Сохраняем информацию о платеже
     try {
@@ -76,13 +273,10 @@ app.post('/api/create-invoice', async (req, res) => {
           telegram_id: userId,
           amount: amount,
           payload: payload,
-          status: 'pending',
-          created_at: new Date().toISOString()
+          status: 'pending'
         });
-      
-      console.log('✅ Pending donation saved');
     } catch (dbError) {
-      console.error('❌ Error saving pending donation:', dbError);
+      console.error('Error saving pending donation:', dbError);
     }
     
     res.json({ 
@@ -97,11 +291,6 @@ app.post('/api/create-invoice', async (req, res) => {
       error: error.message || 'Ошибка создания платежа' 
     });
   }
-});
-
-// API для получения токена бота
-app.get('/api/bot-token', (req, res) => {
-  res.json({ token: process.env.TELEGRAM_BOT_TOKEN });
 });
 
 // Webhook обработчик для бота
@@ -131,9 +320,11 @@ bot.onText(/\/start/, async (msg) => {
 - Отмечать выполненные дела
 - Группировка по времени выполнения
 - Настройка часового пояса
+- Умные уведомления о сроках
 
 💡 *Команды:*
 /help - помощь
+/notifications - настройки уведомлений
 
 Давай начнем! 🚀`;
 
@@ -146,21 +337,21 @@ bot.onText(/\/start/, async (msg) => {
         }
       ],
       [
-        { text: '❓ Помощь', callback_data: 'help' }
+        { text: '❓ Помощь', callback_data: 'help' },
+        { text: '🔔 Уведомления', callback_data: 'notifications' }
       ]
     ]
   };
 
   try {
-    // Сначала отправляем картинку
-    if (process.env.START_IMAGE_URL) {
-      await bot.sendPhoto(chatId, process.env.START_IMAGE_URL, {
+    // Отправляем с логотипом если есть
+    if (process.env.LOGO_IMAGE_URL) {
+      await bot.sendPhoto(chatId, process.env.LOGO_IMAGE_URL, {
         caption: welcomeMessage,
         parse_mode: 'Markdown',
         reply_markup: keyboard
       });
     } else {
-      // Если картинки нет, отправляем просто текст
       await bot.sendMessage(chatId, welcomeMessage, {
         parse_mode: 'Markdown',
         reply_markup: keyboard
@@ -168,7 +359,6 @@ bot.onText(/\/start/, async (msg) => {
     }
   } catch (error) {
     console.error('Start command error:', error);
-    // Fallback - отправляем текст без картинки
     try {
       await bot.sendMessage(chatId, welcomeMessage, {
         parse_mode: 'Markdown',
@@ -201,16 +391,16 @@ bot.onText(/\/help/, async (msg) => {
 📋 Позже - задачи на будущее
 📝 Без срока - задачи без установленного срока
 
+🔔 *Уведомления:*
+- Напоминание за 3 часа до срока
+- Уведомление о просроченных задачах
+- Настройка через шестеренку в приложении
+
 🔧 *Управление:*
 - Нажми на чекбокс чтобы отметить выполненную
 - Используй фильтры: Активные/Все/Архив
 - Нажми на задачу для редактирования
-- Используй шестеренку для настройки часового пояса и уведомлений
-
-⚙️ *Настройки:*
-- Выбор часового пояса из всех регионов России и СНГ
-- Настройка уведомлений и звуков
-- Автоматическое определение времени
+- Используй шестеренку для настроек
 
 Остались вопросы? Пиши разработчику`;
 
@@ -239,18 +429,19 @@ bot.onText(/\/help/, async (msg) => {
 bot.on('callback_query', async (callbackQuery) => {
   const message = callbackQuery.message;
   const data = callbackQuery.data;
+  const chatId = message.chat.id;
+  const userId = callbackQuery.from.id;
+  
+  await bot.answerCallbackQuery(callbackQuery.id);
   
   if (data === 'help') {
-    bot.answerCallbackQuery(callbackQuery.id);
-    
     const helpMessage = `📖 *Справка по Taskly*
 
 🎯 *Основные функции:*
 - ✅ Создание задач с описанием
 - 🎨 Установка приоритетов
 - ⏰ Установка сроков выполнения
-- 🔄 Отметка выполненных задач
-- 📊 Группировка по времени
+- 🔔 Умные уведомления
 
 🔧 *Управление:*
 - Нажми на чекбокс чтобы отметить выполненную
@@ -259,9 +450,75 @@ bot.on('callback_query', async (callbackQuery) => {
 - Используй шестеренку для настроек`;
 
     try {
-      await bot.sendMessage(message.chat.id, helpMessage, { parse_mode: 'Markdown' });
+      await bot.sendMessage(chatId, helpMessage, { parse_mode: 'Markdown' });
     } catch (error) {
       console.error('Help callback error:', error);
+    }
+  } 
+  else if (data === 'notifications') {
+    // Получаем настройки пользователя
+    try {
+      const { data: user } = await supabaseAdmin
+        .from('users')
+        .select('settings')
+        .eq('telegram_id', userId)
+        .single();
+
+      const notificationsEnabled = user?.settings?.notificationsEnabled ?? true;
+      const soundEnabled = user?.settings?.soundEnabled ?? true;
+
+      const notifMessage = `🔔 *Настройки уведомлений*
+
+Текущие настройки:
+${notificationsEnabled ? '✅' : '❌'} Уведомления включены
+${soundEnabled ? '✅' : '❌'} Звуковые уведомления
+
+📢 *Типы уведомлений:*
+• За 3 часа до срока выполнения
+• О просроченных задачах
+
+Изменить настройки можно в приложении через шестеренку ⚙️`;
+
+      const keyboard = {
+        inline_keyboard: [
+          [
+            {
+              text: '📱 Открыть настройки',
+              web_app: { url: process.env.APP_URL }
+            }
+          ]
+        ]
+      };
+
+      await bot.sendMessage(chatId, notifMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } catch (error) {
+      console.error('Notifications callback error:', error);
+    }
+  }
+  else if (data.startsWith('complete_')) {
+    // Выполнение задачи через кнопку в уведомлении
+    const taskId = data.replace('complete_', '');
+    
+    try {
+      const { error } = await supabaseAdmin
+        .from('tasks')
+        .update({ 
+          completed: true, 
+          completed_at: new Date().toISOString() 
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      await bot.sendMessage(chatId, '✅ Задача отмечена как выполненная!', {
+        reply_to_message_id: message.message_id
+      });
+    } catch (error) {
+      console.error('Task completion error:', error);
+      await bot.sendMessage(chatId, '❌ Ошибка при выполнении задачи');
     }
   }
 });
@@ -293,8 +550,6 @@ bot.on('successful_payment', async (msg) => {
         completed_at: new Date().toISOString()
       });
     
-    console.log('✅ Donation logged to database');
-    
     // Обновляем статус pending donation
     await supabaseAdmin
       .from('pending_donations')
@@ -305,7 +560,7 @@ bot.on('successful_payment', async (msg) => {
       .eq('payload', payload);
       
   } catch (error) {
-    console.error('❌ Error saving donation:', error);
+    console.error('Error saving donation:', error);
   }
 
   const thankMessage = `🎉 *Спасибо за поддержку!*
@@ -518,7 +773,6 @@ app.post('/api/tasks', async (req, res) => {
 
     if (userError) throw userError;
 
-    // Дата уже приходит в UTC, сохраняем как есть
     const { data: task, error } = await supabaseAdmin
       .from('tasks')
       .insert({
@@ -526,7 +780,9 @@ app.post('/api/tasks', async (req, res) => {
         title: title.trim(),
         description: description ? description.trim() : null,
         priority: priority || 'medium',
-        due_date: dueDate || null // Уже в UTC
+        due_date: dueDate || null, // Дата уже в UTC
+        notified_upcoming: null,
+        notified_overdue: null
       })
       .select()
       .single();
@@ -575,7 +831,11 @@ app.put('/api/tasks/:id', async (req, res) => {
       updates.description = updates.description.trim();
     }
     
-    // due_date уже приходит в UTC, сохраняем как есть
+    // При изменении due_date сбрасываем флаги уведомлений
+    if (updates.due_date !== undefined) {
+      updates.notified_upcoming = null;
+      updates.notified_overdue = null;
+    }
     
     const { data: task, error } = await supabaseAdmin
       .from('tasks')
@@ -627,8 +887,8 @@ app.listen(PORT, async () => {
   console.log(`🚀 Taskly server running on port ${PORT}`);
   console.log(`📱 App URL: ${process.env.APP_URL}`);
   
-  if (process.env.START_IMAGE_URL) {
-    console.log(`🖼️ Start image URL: ${process.env.START_IMAGE_URL}`);
+  if (process.env.LOGO_IMAGE_URL) {
+    console.log(`🖼️ Logo image URL: ${process.env.LOGO_IMAGE_URL}`);
   }
   
   await setupWebhook();
