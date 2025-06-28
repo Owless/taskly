@@ -294,10 +294,11 @@ body {
 }
 
 /* Заголовок */
+/* Заголовок - КОМПАКТНАЯ ВЕРСИЯ */
 .header {
     background: var(--gradient-surface);
     border-bottom: 1px solid var(--border);
-    padding: var(--spacing-xl) var(--spacing) var(--spacing-large);
+    padding: var(--spacing) var(--spacing) var(--spacing); /* Уменьшили отступы в 2 раза */
     position: sticky;
     top: 0;
     z-index: 100;
@@ -311,13 +312,14 @@ body {
     justify-content: space-between;
     max-width: 600px;
     margin: 0 auto;
+    min-height: 40px; /* Фиксированная минимальная высота */
 }
 
-/* НОВЫЕ СТИЛИ ДЛЯ BRAND SECTION */
+/* КОМПАКТНАЯ BRAND SECTION */
 .brand-section {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 6px; /* Очень близко друг к другу */
     flex: 1;
 }
 
@@ -329,7 +331,7 @@ body {
 }
 
 .logo-image {
-    height: 36px;
+    height: 28px; /* Уменьшили размер логотипа */
     width: auto;
     object-fit: contain;
 }
@@ -338,9 +340,9 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 36px;
-    height: 36px;
-    font-size: 20px;
+    width: 28px; /* Уменьшили размер fallback */
+    height: 28px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--primary);
     background: var(--surface);
@@ -349,7 +351,7 @@ body {
 }
 
 .app-title {
-    font-size: 28px;
+    font-size: 22px; /* Уменьшили размер шрифта */
     font-weight: 800;
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -371,12 +373,12 @@ body {
 .header-actions {
     display: flex;
     align-items: center;
-    gap: var(--spacing);
+    gap: var(--spacing-small); /* Уменьшили gap */
 }
 
 .settings-btn {
-    width: 40px;
-    height: 40px;
+    width: 36px; /* Уменьшили размер кнопки */
+    height: 36px;
     border: none;
     background: var(--surface-secondary);
     border-radius: 50%;
@@ -395,10 +397,15 @@ body {
     transform: scale(1.05);
 }
 
+.settings-btn svg {
+    width: 18px; /* Уменьшили размер иконки */
+    height: 18px;
+}
+
 .header-stats {
     text-align: center;
     background: var(--surface);
-    padding: var(--spacing-small);
+    padding: 8px 12px; /* Уменьшили padding */
     border-radius: var(--radius-small);
     border: 1px solid var(--border);
     box-shadow: 0 2px 8px var(--shadow);
@@ -406,18 +413,77 @@ body {
 
 .stat-number {
     display: block;
-    font-size: 24px;
+    font-size: 20px; /* Уменьшили размер числа */
     font-weight: 800;
     color: var(--primary);
     line-height: 1;
 }
 
 .stat-label {
-    font-size: 11px;
+    font-size: 10px; /* Уменьшили размер подписи */
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 480px) {
+    .header {
+        padding: 12px var(--spacing-small); /* Еще меньше padding на мобильных */
+    }
+    
+    .brand-section {
+        gap: 4px; /* Еще ближе на мобильных */
+    }
+    
+    .app-title {
+        font-size: 18px; /* Еще меньше на мобильных */
+    }
+    
+    .logo-image {
+        height: 24px; /* Еще меньше логотип */
+    }
+    
+    .logo-fallback {
+        width: 24px;
+        height: 24px;
+        font-size: 14px;
+    }
+    
+    .settings-btn {
+        width: 32px;
+        height: 32px;
+    }
+    
+    .settings-btn svg {
+        width: 16px;
+        height: 16px;
+    }
+    
+    .header-stats {
+        padding: 6px 8px;
+    }
+    
+    .stat-number {
+        font-size: 16px;
+    }
+    
+    .stat-label {
+        font-size: 9px;
+    }
+    
+    .header-actions {
+        gap: 8px;
+    }
+}
+
+/* Дополнительно - убедимся что остальные элементы не зависят от старой высоты header */
+.quick-add {
+    padding: var(--spacing);
+    max-width: 600px;
+    margin: 0 auto;
+    margin-top: 0; /* Убираем лишние отступы */
 }
 
 /* Быстрое добавление */
