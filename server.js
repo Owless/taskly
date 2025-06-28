@@ -20,9 +20,6 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 // Webhook для бота
 const WEBHOOK_URL = `${process.env.APP_URL}/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
 
-// Состояния пользователей
-const userStates = new Map();
-
 app.use(express.json());
 app.use(express.static('.'));
 
@@ -63,7 +60,7 @@ app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   }
 });
 
-// API для создания инвойса для пожертвований
+// API для создания invoice данных (НЕ отправляем инвойс, а возвращаем данные)
 app.post('/api/create-invoice', async (req, res) => {
   try {
     const { telegramId, amount } = req.body;
@@ -75,57 +72,90 @@ app.post('/api/create-invoice', async (req, res) => {
       });
     }
 
-    console.log(`Creating invoice for ${amount} stars to user ${telegramId}`);
+    console.log(`Creating invoice data for ${amount} stars for user ${telegramId}`);
     
-    // Создаем инвойс через Bot API
-    const invoice = await bot.sendInvoice(
-      telegramId,                                    // chat_id
-      'Поддержка Taskly',                          // title
-      `Поддержка разработки приложения - ${amount} ⭐`, // description
-      `donation_${telegramId}_${Date.now()}`,       // payload
-      '',                                           // provider_token (пустой для Stars)
-      'XTR',                                       // currency
-      [{ label: `${amount} Stars`, amount: amount }], // prices
-      {
-        max_tip_amount: 0,
-        suggested_tip_amounts: [],
-        need_name: false,
-        need_phone_number: false,
-        need_email: false,
-        need_shipping_address: false,
-        send_phone_number_to_provider: false,
-        send_email_to_provider: false,
-        is_flexible: false
-      }
-    );
+    // Создаем уникальный payload
+    const payload = `donation_${telegramId}_${Date.now()}`;
     
-    console.log(`✅ Invoice created successfully for ${amount} stars`);
+    // Возвращаем данные для создания инвойса в WebApp
+    const invoiceData = {
+      title: 'Поддержка Taskly',
+      description: `Поддержка разработки приложения - ${amount} ⭐`,
+      payload: payload,
+      provider_token: '', // Пустой для Telegram Stars
+      currency: 'XTR',
+      prices: [{ 
+        label: `${amount} Stars`, 
+        amount: amount 
+      }],
+      max_tip_amount: 0,
+      suggested_tip_amounts: [],
+      need_name: false,
+      need_phone_number: false,
+      need_email: false,
+      need_shipping_address: false,
+      send_phone_number_to_provider: false,
+      send_email_to_provider: false,
+      is_flexible: false
+    };
+    
+    console.log(`✅ Invoice data created for ${amount} stars`);
     
     res.json({ 
       success: true, 
-      message: `Создан платеж на ${amount} ⭐`,
-      invoice_message_id: invoice.message_id
+      invoiceData: invoiceData
     });
     
   } catch (error) {
-    console.error('❌ Invoice creation error:', error);
-    
-    let errorMessage = 'Не удалось создать платеж';
-    
-    if (error.code === 400) {
-      errorMessage = 'Некорректная сумма для платежа';
-    } else if (error.code === 403) {
-      errorMessage = 'Пользователь заблокировал бота';
-    }
+    console.error('❌ Invoice data creation error:', error);
     
     res.status(400).json({ 
       success: false, 
-      error: errorMessage 
+      error: 'Не удалось подготовить платеж' 
     });
   }
 });
 
-// Команды бота (ваш существующий код)
+// API для валидации платежа (после успешной оплаты)
+app.post('/api/validate-payment', async (req, res) => {
+  try {
+    const { telegramId, payload, amount } = req.body;
+    
+    console.log(`Validating payment for user ${telegramId}, amount: ${amount}`);
+    
+    // Логируем платеж в Supabase
+    const { data, error } = await supabaseAdmin
+      .from('donations')
+      .insert({
+        telegram_id: telegramId,
+        amount: amount,
+        currency: 'XTR',
+        payload: payload,
+        status: 'completed'
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    console.log('✅ Payment validated and saved');
+    
+    res.json({ 
+      success: true, 
+      message: 'Платеж успешно обработан',
+      donation: data
+    });
+    
+  } catch (error) {
+    console.error('❌ Payment validation error:', error);
+    res.status(400).json({ 
+      success: false, 
+      error: 'Ошибка валидации платежа' 
+    });
+  }
+});
+
+// Команды бота
 bot.onText(/\/start/, async (msg) => {
   const chatId = msg.chat.id;
   const firstName = msg.from.first_name || 'друг';
@@ -306,7 +336,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// API: Авторизация (ваш существующий код)
+// API: Авторизация
 app.post('/api/auth', async (req, res) => {
   try {
     const { initData } = req.body;
@@ -317,19 +347,13 @@ app.post('/api/auth', async (req, res) => {
         const userDataString = initData.split('user=')[1].split('&')[0];
         userData = JSON.parse(decodeURIComponent(userDataString));
       } else {
-        // Фоллбэк для тестирования
-        userData = {
-          id: 123456,
-          first_name: "Test User",
-          username: "testuser"
-        };
+        throw new Error('No user data in initData');
       }
     } catch (parseError) {
-      userData = {
-        id: Date.now(),
-        first_name: "Test User",
-        username: "testuser"
-      };
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Неверные данные авторизации' 
+      });
     }
 
     console.log('User auth:', userData.id);
@@ -365,7 +389,7 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// Остальные API endpoints для задач (ваш существующий код)
+// API endpoints для задач
 app.get('/api/tasks/:telegramId', async (req, res) => {
   try {
     const { telegramId } = req.params;
