@@ -7,12 +7,20 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-// Импорт конфигураций
+// Импорт конфигураций и middleware
 const { checkTables, healthCheck } = require('./config/database');
 const { initializeBot } = require('./config/telegram');
+const { errorHandler, notFoundHandler, validateEnvironment, initializeGlobalErrorHandlers } = require('./middleware/errorHandler');
+const { sanitizeInput } = require('./middleware/validation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Валидация переменных окружения
+validateEnvironment();
+
+// Инициализация глобальных обработчиков ошибок
+initializeGlobalErrorHandlers();
 
 // =====================================
 // Middleware
@@ -57,6 +65,9 @@ app.use(express.json({
 
 app.use(express.urlencoded({ extended: true }));
 
+// Санитизация входных данных
+app.use(sanitizeInput);
+
 // Логирование запросов в development
 if (process.env.NODE_ENV === 'development') {
   app.use((req, res, next) => {
@@ -75,7 +86,14 @@ app.get('/', (req, res) => {
     message: 'Taskly Backend API',
     version: '1.0.0',
     status: 'running',
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      auth: '/api/auth',
+      tasks: '/api/tasks',
+      users: '/api/users',
+      webhook: '/webhook'
+    }
   });
 });
 
@@ -102,39 +120,20 @@ app.get('/health', async (req, res) => {
 });
 
 // =====================================
-// API роуты (пока заглушки)
+// API роуты
 // =====================================
 
 // Аутентификация
-app.use('/api/auth', (req, res, next) => {
-  // Временная заглушка
-  res.json({
-    message: 'Auth endpoint - coming soon',
-    endpoint: req.originalUrl
-  });
-});
+app.use('/api/auth', require('./routes/auth'));
 
 // Задачи
-app.use('/api/tasks', (req, res, next) => {
-  // Временная заглушка
-  res.json({
-    message: 'Tasks endpoint - coming soon',
-    endpoint: req.originalUrl
-  });
-});
+app.use('/api/tasks', require('./routes/tasks'));
 
 // Пользователи
-app.use('/api/users', (req, res, next) => {
-  // Временная заглушка
-  res.json({
-    message: 'Users endpoint - coming soon',
-    endpoint: req.originalUrl
-  });
-});
+app.use('/api/users', require('./routes/users'));
 
-// Webhook для Telegram
-app.use('/webhook', (req, res, next) => {
-  // Временная заглушка
+// Webhook для Telegram (пока заглушка)
+app.use('/webhook', (req, res) => {
   res.json({
     message: 'Webhook endpoint - coming soon',
     endpoint: req.originalUrl
@@ -145,27 +144,11 @@ app.use('/webhook', (req, res, next) => {
 // Обработка ошибок
 // =====================================
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    error: 'Not Found',
-    message: 'Запрашиваемый ресурс не найден',
-    path: req.originalUrl
-  });
-});
+// 404 handler для неизвестных роутов
+app.use(notFoundHandler);
 
-// Общий error handler
-app.use((error, req, res, next) => {
-  console.error('❌ Необработанная ошибка:', error);
-  
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
-  res.status(error.status || 500).json({
-    error: 'Internal Server Error',
-    message: isDevelopment ? error.message : 'Внутренняя ошибка сервера',
-    ...(isDevelopment && { stack: error.stack })
-  });
-});
+// Главный обработчик ошибок
+app.use(errorHandler);
 
 // =====================================
 // Инициализация и запуск
@@ -193,7 +176,7 @@ const startServer = async () => {
     }
     
     // Запускаем сервер
-    app.listen(PORT, () => {
+    const server = app.listen(PORT, () => {
       console.log('✅ Taskly Backend успешно запущен!');
       console.log(`📡 Сервер слушает порт: ${PORT}`);
       console.log(`🌍 Окружение: ${process.env.NODE_ENV || 'development'}`);
@@ -201,44 +184,66 @@ const startServer = async () => {
       console.log(`❤️ Health check: http://localhost:${PORT}/health`);
       
       if (process.env.NODE_ENV === 'development') {
-        console.log('\n📝 Доступные endpoints:');
-        console.log('  GET  / - Главная страница');
-        console.log('  GET  /health - Проверка состояния');
-        console.log('  POST /api/auth/* - Аутентификация (скоро)');
-        console.log('  *    /api/tasks/* - Управление задачами (скоро)');
-        console.log('  *    /api/users/* - Управление пользователями (скоро)');
-        console.log('  POST /webhook/* - Telegram webhook (скоро)');
+        console.log('\n📝 Доступные API endpoints:');
+        console.log('  GET    / - Информация о сервисе');
+        console.log('  GET    /health - Проверка состояния');
+        console.log('\n🔐 Аутентификация:');
+        console.log('  POST   /api/auth/login - Вход через Telegram');
+        console.log('  POST   /api/auth/refresh - Обновление токена');
+        console.log('  GET    /api/auth/me - Информация о пользователе');
+        console.log('\n📝 Задачи:');
+        console.log('  GET    /api/tasks - Получить задачи');
+        console.log('  POST   /api/tasks - Создать задачу');
+        console.log('  GET    /api/tasks/:id - Получить задачу');
+        console.log('  PUT    /api/tasks/:id - Обновить задачу');
+        console.log('  DELETE /api/tasks/:id - Удалить задачу');
+        console.log('  POST   /api/tasks/:id/complete - Выполнить задачу');
+        console.log('  GET    /api/tasks/stats - Статистика задач');
+        console.log('\n👤 Пользователи:');
+        console.log('  GET    /api/users/profile - Профиль пользователя');
+        console.log('  PUT    /api/users/profile - Обновить профиль');
+        console.log('  GET    /api/users/settings - Настройки');
+        console.log('  PUT    /api/users/settings - Обновить настройки');
+        console.log('  GET    /api/users/stats - Статистика пользователя');
+        console.log('  DELETE /api/users/account - Удалить аккаунт');
+        console.log('  POST   /api/users/export - Экспорт данных');
+        console.log('\n🤖 Telegram Bot команды:');
+        console.log('  /start - Приветствие и запуск приложения');
+        console.log('  /help - Справка по использованию');
+        console.log('  /stats - Статистика задач');
+        console.log('  /settings - Настройки уведомлений');
       }
     });
+    
+    // Graceful shutdown
+    const gracefulShutdown = (signal) => {
+      console.log(`\n🔄 Получен сигнал ${signal}, завершаем работу сервера...`);
+      
+      server.close(() => {
+        console.log('📡 HTTP сервер остановлен');
+        
+        // Здесь можно добавить cleanup других ресурсов
+        // например, закрытие подключений к базе данных
+        
+        console.log('✅ Сервер корректно остановлен');
+        process.exit(0);
+      });
+      
+      // Принудительная остановка через 30 секунд
+      setTimeout(() => {
+        console.error('❌ Принудительная остановка сервера');
+        process.exit(1);
+      }, 30000);
+    };
+    
+    process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+    process.on('SIGINT', () => gracefulShutdown('SIGINT'));
     
   } catch (error) {
     console.error('❌ Ошибка запуска сервера:', error);
     process.exit(1);
   }
 };
-
-// Graceful shutdown
-const shutdown = async (signal) => {
-  console.log(`\n🔄 Получен сигнал ${signal}, завершаем работу...`);
-  
-  // Здесь можно добавить cleanup код
-  
-  console.log('✅ Сервер остановлен');
-  process.exit(0);
-};
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
-
-// Обработка необработанных ошибок
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('❌ Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('❌ Uncaught Exception:', error);
-  process.exit(1);
-});
 
 // Запускаем сервер
 startServer();
