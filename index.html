@@ -24,7 +24,7 @@
             <div class="access-steps">
                 <div class="step">
                     <span class="step-number">1</span>
-                    <span>Найдите бота @Tasklyclub_bot в Telegram</span>
+                    <span>Найдите бота @TasklyBot в Telegram</span>
                 </div>
                 <div class="step">
                     <span class="step-number">2</span>
@@ -57,12 +57,19 @@
                     </div>
                     <div class="user-info">
                         <h1 class="app-title">Taskly</h1>
-                        <p id="userGreeting" class="user-greeting">Привет, User!</p>
                     </div>
-                    <div class="header-stats">
-                        <div class="stat">
-                            <span id="activeCount" class="stat-number">0</span>
-                            <span class="stat-label">активных</span>
+                    <div class="header-actions">
+                        <button id="settingsBtn" class="settings-btn">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 1v6m0 10v6m11-7h-6M6 12H0" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                        <div class="header-stats">
+                            <div class="stat">
+                                <span id="activeCount" class="stat-number">0</span>
+                                <span class="stat-label">активных</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -76,7 +83,7 @@
                             type="text" 
                             id="taskTitle" 
                             placeholder="Что нужно сделать?" 
-                            maxlength="500"
+                            maxlength="100"
                             class="task-input"
                         >
                         <button id="addTaskBtn" class="add-btn" disabled>
@@ -92,34 +99,25 @@
                             id="taskDescription" 
                             placeholder="Добавить описание..." 
                             rows="2"
+                            maxlength="500"
                             class="description-input"
                         ></textarea>
                         
                         <div class="options-row">
-                            <!-- Современные чекбоксы приоритетов -->
+                            <!-- Компактные чекбоксы приоритетов -->
                             <div class="priority-selector">
-                                <label class="priority-label">Приоритет:</label>
-                                <div class="priority-options">
+                                <div class="priority-options compact">
                                     <label class="priority-option" data-priority="low">
                                         <input type="radio" name="taskPriority" value="low">
-                                        <span class="priority-radio low">
-                                            <span class="priority-icon">🟢</span>
-                                            <span class="priority-text">Низкий</span>
-                                        </span>
+                                        <span class="priority-checkbox low">🟢</span>
                                     </label>
                                     <label class="priority-option" data-priority="medium">
                                         <input type="radio" name="taskPriority" value="medium" checked>
-                                        <span class="priority-radio medium">
-                                            <span class="priority-icon">🟡</span>
-                                            <span class="priority-text">Средний</span>
-                                        </span>
+                                        <span class="priority-checkbox medium">🟡</span>
                                     </label>
                                     <label class="priority-option" data-priority="high">
                                         <input type="radio" name="taskPriority" value="high">
-                                        <span class="priority-radio high">
-                                            <span class="priority-icon">🔴</span>
-                                            <span class="priority-text">Высокий</span>
-                                        </span>
+                                        <span class="priority-checkbox high">🔴</span>
                                     </label>
                                 </div>
                             </div>
@@ -219,34 +217,25 @@
                 </div>
                 
                 <div class="modal-body">
-                    <input type="text" id="editTaskTitle" placeholder="Название задачи" class="modal-input">
-                    <textarea id="editTaskDescription" placeholder="Описание" rows="3" class="modal-textarea"></textarea>
+                    <input type="text" id="editTaskTitle" placeholder="Название задачи" maxlength="100" class="modal-input">
+                    <textarea id="editTaskDescription" placeholder="Описание" rows="3" maxlength="500" class="modal-textarea"></textarea>
                     
                     <div class="modal-options">
-                        <!-- Современные чекбоксы приоритетов в модалке -->
+                        <!-- Компактные чекбоксы приоритетов в модалке -->
                         <div class="priority-selector">
                             <label class="priority-label">Приоритет:</label>
-                            <div class="priority-options modal-priority">
+                            <div class="priority-options compact">
                                 <label class="priority-option" data-priority="low">
                                     <input type="radio" name="editTaskPriority" value="low">
-                                    <span class="priority-radio low">
-                                        <span class="priority-icon">🟢</span>
-                                        <span class="priority-text">Низкий</span>
-                                    </span>
+                                    <span class="priority-checkbox low">🟢</span>
                                 </label>
                                 <label class="priority-option" data-priority="medium">
                                     <input type="radio" name="editTaskPriority" value="medium">
-                                    <span class="priority-radio medium">
-                                        <span class="priority-icon">🟡</span>
-                                        <span class="priority-text">Средний</span>
-                                    </span>
+                                    <span class="priority-checkbox medium">🟡</span>
                                 </label>
                                 <label class="priority-option" data-priority="high">
                                     <input type="radio" name="editTaskPriority" value="high">
-                                    <span class="priority-radio high">
-                                        <span class="priority-icon">🔴</span>
-                                        <span class="priority-text">Высокий</span>
-                                    </span>
+                                    <span class="priority-checkbox high">🔴</span>
                                 </label>
                             </div>
                         </div>
@@ -258,6 +247,56 @@
                 <div class="modal-footer">
                     <button id="deleteTaskBtn" class="delete-btn-modal">Удалить</button>
                     <button id="saveTaskBtn" class="save-btn">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Модальное окно настроек -->
+        <div id="settingsModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Настройки</h3>
+                    <button id="closeSettingsModal" class="close-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h4>Часовой пояс</h4>
+                        <select id="timezoneSelect" class="settings-select">
+                            <option value="auto">Автоматически</option>
+                            <option value="Europe/Moscow">Москва (UTC+3)</option>
+                            <option value="Europe/Kiev">Киев (UTC+2)</option>
+                            <option value="Europe/Minsk">Минск (UTC+3)</option>
+                            <option value="Asia/Almaty">Алматы (UTC+6)</option>
+                            <option value="Asia/Tashkent">Ташкент (UTC+5)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="settings-section">
+                        <h4>Уведомления</h4>
+                        <div class="settings-toggle">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="notificationsEnabled" checked>
+                                <span class="toggle-slider"></span>
+                                Включить уведомления
+                            </label>
+                        </div>
+                        <div class="settings-toggle">
+                            <label class="toggle-label">
+                                <input type="checkbox" id="soundEnabled" checked>
+                                <span class="toggle-slider"></span>
+                                Звуковые уведомления
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button id="saveSettingsBtn" class="save-btn full-width">Сохранить настройки</button>
                 </div>
             </div>
         </div>
