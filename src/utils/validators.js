@@ -1,229 +1,150 @@
 const Joi = require('joi');
-const { TASK_PRIORITIES, REPEAT_TYPES, REPEAT_UNITS, LIMITS } = require('../config/constants');
 
-// Валидация создания задачи
-const createTaskSchema = Joi.object({
-  title: Joi.string()
-    .trim()
-    .min(1)
-    .max(LIMITS.TASK_TITLE_MAX_LENGTH)
-    .required()
-    .messages({
-      'string.empty': 'Название задачи не может быть пустым',
-      'string.max': `Название задачи не может быть длиннее ${LIMITS.TASK_TITLE_MAX_LENGTH} символов`
+// Схемы валидации
+const schemas = {
+    // Telegram Init Data для аутентификации
+    telegramAuth: Joi.object({
+        initData: Joi.string().required(),
+        hash: Joi.string().optional()
     }),
 
-  description: Joi.string()
-    .trim()
-    .max(LIMITS.TASK_DESCRIPTION_MAX_LENGTH)
-    .allow('')
-    .optional()
-    .messages({
-      'string.max': `Описание не может быть длиннее ${LIMITS.TASK_DESCRIPTION_MAX_LENGTH} символов`
+    // Создание задачи
+    createTask: Joi.object({
+        title: Joi.string().trim().min(1).max(100).required(),
+        description: Joi.string().trim().max(500).optional().allow(''),
+        due_date: Joi.date().optional().allow(null),
+        due_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().allow(null),
+        priority: Joi.string().valid('low', 'medium', 'high').default('medium'),
+        is_recurring: Joi.boolean().default(false),
+        repeat_type: Joi.string().valid('daily', 'weekly', 'monthly', 'custom').optional(),
+        repeat_interval: Joi.number().integer().min(1).max(365).optional(),
+        repeat_unit: Joi.string().valid('days', 'weeks', 'months').optional(),
+        repeat_end_date: Joi.date().optional().allow(null)
     }),
 
-  due_date: Joi.date()
-    .iso()
-    .min('now')
-    .optional()
-    .allow(null)
-    .messages({
-      'date.min': 'Дата выполнения не может быть в прошлом'
+    // Обновление задачи
+    updateTask: Joi.object({
+        title: Joi.string().trim().min(1).max(100).optional(),
+        description: Joi.string().trim().max(500).optional().allow(''),
+        due_date: Joi.date().optional().allow(null),
+        due_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional().allow(null),
+        priority: Joi.string().valid('low', 'medium', 'high').optional(),
+        completed: Joi.boolean().optional(),
+        is_recurring: Joi.boolean().optional(),
+        repeat_type: Joi.string().valid('daily', 'weekly', 'monthly', 'custom').optional(),
+        repeat_interval: Joi.number().integer().min(1).max(365).optional(),
+        repeat_unit: Joi.string().valid('days', 'weeks', 'months').optional(),
+        repeat_end_date: Joi.date().optional().allow(null)
     }),
 
-  due_time: Joi.string()
-    .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
-    .optional()
-    .allow(null)
-    .messages({
-      'string.pattern.base': 'Время должно быть в формате HH:MM'
+    // Фильтры задач
+    taskFilters: Joi.object({
+        filter: Joi.string().valid('all', 'today', 'tomorrow', 'week', 'overdue', 'no_date').default('all'),
+        limit: Joi.number().integer().min(1).max(100).default(50),
+        offset: Joi.number().integer().min(0).default(0)
     }),
 
-  priority: Joi.string()
-    .valid(...Object.values(TASK_PRIORITIES))
-    .default(TASK_PRIORITIES.MEDIUM),
-
-  is_recurring: Joi.boolean().default(false),
-
-  repeat_type: Joi.string()
-    .valid(...Object.values(REPEAT_TYPES))
-    .when('is_recurring', {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional()
+    // Настройки пользователя
+    userSettings: Joi.object({
+        language_code: Joi.string().max(10).optional(),
+        timezone: Joi.string().max(50).optional(),
+        settings: Joi.object({
+            notifications: Joi.boolean().optional(),
+            reminder_time: Joi.string().pattern(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/).optional()
+        }).optional()
     }),
 
-  repeat_interval: Joi.number()
-    .integer()
-    .min(LIMITS.REPEAT_INTERVAL_MIN)
-    .max(LIMITS.REPEAT_INTERVAL_MAX)
-    .default(1)
-    .when('is_recurring', {
-      is: true,
-      then: Joi.required(),
-      otherwise: Joi.optional()
+    // UUID параметр
+    uuidParam: Joi.object({
+        id: Joi.string().uuid().required()
     }),
 
-  repeat_unit: Joi.string()
-    .valid(...Object.values(REPEAT_UNITS))
-    .when('repeat_type', {
-      is: REPEAT_TYPES.CUSTOM,
-      then: Joi.required(),
-      otherwise: Joi.optional()
-    }),
-
-  repeat_end_date: Joi.date()
-    .iso()
-    .min(Joi.ref('due_date'))
-    .optional()
-    .allow(null)
-    .when('is_recurring', {
-      is: true,
-      then: Joi.optional(),
-      otherwise: Joi.forbidden()
-    })
-});
-
-// Валидация обновления задачи
-const updateTaskSchema = createTaskSchema.fork(
-  ['title'],
-  (schema) => schema.optional()
-);
-
-// Валидация фильтров задач
-const taskFiltersSchema = Joi.object({
-  status: Joi.string()
-    .valid('all', 'today', 'tomorrow', 'week', 'overdue', 'no_date', 'completed')
-    .default('all'),
-
-  priority: Joi.string()
-    .valid(...Object.values(TASK_PRIORITIES))
-    .optional(),
-
-  search: Joi.string()
-    .trim()
-    .max(100)
-    .optional(),
-
-  limit: Joi.number()
-    .integer()
-    .min(1)
-    .max(100)
-    .default(LIMITS.TASKS_PER_PAGE),
-
-  offset: Joi.number()
-    .integer()
-    .min(0)
-    .default(0),
-
-  sort_by: Joi.string()
-    .valid('due_date', 'priority', 'created_at', 'title')
-    .default('due_date'),
-
-  sort_order: Joi.string()
-    .valid('asc', 'desc')
-    .default('asc')
-});
-
-// Валидация настроек пользователя
-const userSettingsSchema = Joi.object({
-  notifications: Joi.boolean().default(true),
-  reminder_time: Joi.string()
-    .pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
-    .default('09:00'),
-  timezone: Joi.string().default('Europe/Moscow'),
-  language: Joi.string()
-    .valid('ru', 'en', 'uk')
-    .default('ru'),
-  daily_summary: Joi.boolean().default(true),
-  overdue_reminders: Joi.boolean().default(true)
-});
-
-// Валидация пожертвования
-const donationSchema = Joi.object({
-  amount_stars: Joi.number()
-    .integer()
-    .min(LIMITS.MIN_DONATION_AMOUNT)
-    .max(LIMITS.MAX_DONATION_AMOUNT)
-    .required()
-    .messages({
-      'number.min': `Минимальная сумма: ${LIMITS.MIN_DONATION_AMOUNT} звезда`,
-      'number.max': `Максимальная сумма: ${LIMITS.MAX_DONATION_AMOUNT} звезд`
-    }),
-
-  description: Joi.string()
-    .trim()
-    .max(200)
-    .optional()
-    .allow('')
-});
-
-// Валидация Telegram WebApp initData
-const telegramInitDataSchema = Joi.object({
-  user: Joi.object({
-    id: Joi.number().required(),
-    first_name: Joi.string().required(),
-    last_name: Joi.string().optional(),
-    username: Joi.string().optional(),
-    language_code: Joi.string().optional()
-  }).required(),
-  
-  auth_date: Joi.number().required(),
-  hash: Joi.string().required()
-}).unknown(true); // Разрешаем дополнительные поля
-
-// Общие валидаторы
-const validators = {
-  // UUID валидация
-  uuid: Joi.string().uuid().required(),
-
-  // Pagination
-  pagination: Joi.object({
-    page: Joi.number().integer().min(1).default(1),
-    limit: Joi.number().integer().min(1).max(100).default(20)
-  }),
-
-  // Telegram ID
-  telegramId: Joi.number().integer().positive().required(),
-
-  // Дата в формате YYYY-MM-DD
-  dateString: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/),
-
-  // Время в формате HH:MM
-  timeString: Joi.string().pattern(/^([01]\d|2[0-3]):([0-5]\d)$/)
+    // Telegram webhook
+    telegramWebhook: Joi.object({
+        message: Joi.object().optional(),
+        callback_query: Joi.object().optional(),
+        pre_checkout_query: Joi.object().optional(),
+        successful_payment: Joi.object().optional()
+    }).unknown(true)
 };
 
-// Функция для валидации данных
-const validate = (schema, data, options = {}) => {
-  const { error, value } = schema.validate(data, {
-    abortEarly: false,
-    stripUnknown: true,
-    ...options
-  });
+// Основная функция валидации
+const validate = (schema, data) => {
+    const { error, value } = schema.validate(data, {
+        abortEarly: false,
+        stripUnknown: true,
+        allowUnknown: false
+    });
 
-  if (error) {
-    const details = error.details.map(detail => ({
-      field: detail.path.join('.'),
-      message: detail.message,
-      value: detail.context?.value
-    }));
+    if (error) {
+        const validationError = new Error('Validation failed');
+        validationError.name = 'ValidationError';
+        validationError.details = error.details.map(detail => ({
+            field: detail.path.join('.'),
+            message: detail.message,
+            type: detail.type
+        }));
+        throw validationError;
+    }
 
-    const validationError = new Error('Validation failed');
-    validationError.name = 'ValidationError';
-    validationError.details = details;
-    throw validationError;
-  }
+    return value;
+};
 
-  return value;
+// Вспомогательные валидаторы
+const validators = {
+    // Валидация email
+    isValidEmail: (email) => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    },
+
+    // Валидация телефона
+    isValidPhone: (phone) => {
+        const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+        return phoneRegex.test(phone);
+    },
+
+    // Валидация URL
+    isValidURL: (url) => {
+        try {
+            new URL(url);
+            return true;
+        } catch {
+            return false;
+        }
+    },
+
+    // Валидация UUID
+    isValidUUID: (uuid) => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        return uuidRegex.test(uuid);
+    },
+
+    // Валидация даты
+    isValidDate: (dateString) => {
+        const date = new Date(dateString);
+        return date instanceof Date && !isNaN(date);
+    },
+
+    // Валидация времени (HH:MM)
+    isValidTime: (timeString) => {
+        const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+        return timeRegex.test(timeString);
+    },
+
+    // Валидация приоритета задачи
+    isValidPriority: (priority) => {
+        return ['low', 'medium', 'high'].includes(priority);
+    },
+
+    // Валидация Telegram ID
+    isValidTelegramId: (id) => {
+        return Number.isInteger(id) && id > 0;
+    }
 };
 
 module.exports = {
-  createTaskSchema,
-  updateTaskSchema,
-  taskFiltersSchema,
-  userSettingsSchema,
-  donationSchema,
-  telegramInitDataSchema,
-  validators,
-  validate
+    schemas,
+    validate,
+    validators
 };
