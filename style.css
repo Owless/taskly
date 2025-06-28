@@ -5,6 +5,7 @@
     box-sizing: border-box;
 }
 
+/* Основные CSS переменные - светлая тема по умолчанию */
 :root {
     /* Светлая тема - бело-голубая */
     --primary: #007AFF;
@@ -55,8 +56,42 @@
     --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Темная тема - бело-темно-синяя */
-.dark-theme,
+/* Темная тема - принудительное применение */
+.dark-theme {
+    --primary: #0A84FF !important;
+    --primary-light: #409CFF !important;
+    --primary-dark: #0056CC !important;
+    --secondary: #5AC8FA !important;
+    --accent: #30D158 !important;
+    --warning: #FF9F0A !important;
+    --danger: #FF453A !important;
+    
+    --background: #000000 !important;
+    --surface: #1C1C1E !important;
+    --surface-secondary: #2C2C2E !important;
+    --surface-elevated: #3A3A3C !important;
+    --text-primary: #FFFFFF !important;
+    --text-secondary: #8E8E93 !important;
+    --text-tertiary: #636366 !important;
+    --border: #38383A !important;
+    --border-light: #48484A !important;
+    --shadow: rgba(0, 0, 0, 0.3) !important;
+    --shadow-elevated: rgba(0, 0, 0, 0.5) !important;
+    
+    /* Темные цвета приоритетов */
+    --priority-low: #30D158 !important;
+    --priority-low-bg: rgba(48, 209, 88, 0.15) !important;
+    --priority-medium: #FF9F0A !important;
+    --priority-medium-bg: rgba(255, 159, 10, 0.15) !important;
+    --priority-high: #FF453A !important;
+    --priority-high-bg: rgba(255, 69, 58, 0.15) !important;
+    
+    --gradient-primary: linear-gradient(135deg, #0A84FF 0%, #5AC8FA 100%) !important;
+    --gradient-surface: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%) !important;
+    --gradient-support: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%) !important;
+}
+
+/* Автоматическая темная тема */
 @media (prefers-color-scheme: dark) {
     :root {
         --primary: #0A84FF;
@@ -79,7 +114,6 @@
         --shadow: rgba(0, 0, 0, 0.3);
         --shadow-elevated: rgba(0, 0, 0, 0.5);
         
-        /* Темные цвета приоритетов */
         --priority-low: #30D158;
         --priority-low-bg: rgba(48, 209, 88, 0.15);
         --priority-medium: #FF9F0A;
@@ -252,6 +286,15 @@ body {
     color: white;
     font-size: 20px;
     box-shadow: 0 4px 12px var(--shadow);
+    position: relative;
+    overflow: hidden;
+}
+
+.logo-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
 }
 
 .user-info {
@@ -1398,4 +1441,46 @@ select:focus-visible {
 
 .support-card {
     animation-delay: 0.3s;
+}
+
+/* Принудительное применение темной темы для всех элементов */
+.dark-theme * {
+    color-scheme: dark;
+}
+
+.dark-theme input,
+.dark-theme textarea,
+.dark-theme select {
+    color-scheme: dark;
+}
+
+/* Дополнительные стили для темной темы */
+.dark-theme .task-item {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.dark-theme .modal-content {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.dark-theme .quick-add-form {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.dark-theme .support-card {
+    background: var(--gradient-support) !important;
+    border-color: var(--border) !important;
+}
+
+.dark-theme .filters {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.dark-theme .header {
+    background: var(--gradient-surface) !important;
+    border-bottom-color: var(--border) !important;
 }
