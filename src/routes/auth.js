@@ -5,14 +5,10 @@ const AuthController = require('../controllers/authController');
 const { authenticateJWT } = require('../middleware/auth');
 const { createValidationMiddleware } = require('../middleware/validation');
 const rateLimit = require('../middleware/rateLimit');
-const { telegramInitDataSchema } = require('../utils/validators');
+const { schemas } = require('../utils/validators');
 
 // Валидация для Telegram login
-const validateTelegramLogin = createValidationMiddleware(
-  telegramInitDataSchema.keys({
-    initData: telegramInitDataSchema.extract('initData').required()
-  })
-);
+const validateTelegramLogin = createValidationMiddleware(schemas.telegramAuth);
 
 /**
  * @route POST /api/auth/telegram-login
