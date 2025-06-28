@@ -152,44 +152,42 @@
             </div>
 
             <!-- Поддержка проекта -->
-            <section class="support-section">
-                <div class="support-card">
-                    <div class="support-header">
-                        <div class="support-icon">💙</div>
-                        <div class="support-text">
-                            <h4>Нравится приложение?</h4>
-                            <p>Поддержи развитие проекта</p>
-                        </div>
-                    </div>
-                    
-                    <div class="support-form">
-                        <div class="amount-input-group">
-                            <input 
-                                type="number" 
-                                id="donationAmount" 
-                                placeholder="1-2500" 
-                                min="1" 
-                                max="2500"
-                                class="amount-input"
-                            >
-                            <span class="currency">⭐</span>
-                        </div>
-                        <button id="donateBtn" class="donate-btn" disabled>
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
-                            </svg>
-                            Поддержать
-                        </button>
-                    </div>
-                    
-                    <div class="quick-amounts">
-                        <button class="quick-amount" data-amount="1">1⭐</button>
-                        <button class="quick-amount" data-amount="5">5⭐</button>
-                        <button class="quick-amount" data-amount="10">10⭐</button>
-                        <button class="quick-amount" data-amount="25">25⭐</button>
-                    </div>
-                </div>
-            </section>
+            <!-- Поддержка проекта -->
+<section class="support-section">
+    <div class="support-card">
+        <div class="support-header">
+            <div class="support-icon">💙</div>
+            <div class="support-text">
+                <h4>Нравится приложение?</h4>
+                <p>Поддержи развитие проекта</p>
+            </div>
+        </div>
+        
+        <div class="support-form">
+            <div class="amount-input-group">
+                <input 
+                    type="number" 
+                    id="donationAmount" 
+                    placeholder="Введите сумму (1-2500)" 
+                    min="1" 
+                    max="2500"
+                    class="amount-input"
+                >
+                <span class="currency">⭐</span>
+            </div>
+            <button id="donateBtn" class="donate-btn" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
+                </svg>
+                Поддержать
+            </button>
+        </div>
+        
+        <div class="support-info">
+            <p>Платеж будет обработан прямо в приложении</p>
+        </div>
+    </div>
+</section>
         </div>
 
         <!-- Модальное окно редактирования -->
