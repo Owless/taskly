@@ -294,11 +294,11 @@ body {
 }
 
 /* Заголовок */
-/* Заголовок - КОМПАКТНАЯ ВЕРСИЯ */
+/* Заголовок - ОЧЕНЬ КОМПАКТНАЯ ВЕРСИЯ */
 .header {
     background: var(--gradient-surface);
     border-bottom: 1px solid var(--border);
-    padding: var(--spacing) var(--spacing) var(--spacing); /* Уменьшили отступы в 2 раза */
+    padding: 8px var(--spacing); /* Очень маленький padding для минимальной высоты */
     position: sticky;
     top: 0;
     z-index: 100;
@@ -312,15 +312,16 @@ body {
     justify-content: space-between;
     max-width: 600px;
     margin: 0 auto;
-    min-height: 40px; /* Фиксированная минимальная высота */
+    height: 40px; /* Фиксированная маленькая высота */
 }
 
-/* КОМПАКТНАЯ BRAND SECTION */
+/* МАКСИМАЛЬНО КОМПАКТНАЯ BRAND SECTION */
 .brand-section {
     display: flex;
     align-items: center;
-    gap: 6px; /* Очень близко друг к другу */
+    gap: 2px; /* Минимальный отступ */
     flex: 1;
+    height: 100%;
 }
 
 .app-logo {
@@ -328,44 +329,50 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    margin: 0;
+    padding: 0;
 }
 
 .logo-image {
-    height: 28px; /* Уменьшили размер логотипа */
+    height: 24px; /* Компактный логотип */
     width: auto;
     object-fit: contain;
+    margin: 0;
+    padding: 0;
 }
 
 .logo-fallback {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px; /* Уменьшили размер fallback */
-    height: 28px;
-    font-size: 16px;
+    width: 24px;
+    height: 24px;
+    font-size: 14px;
     font-weight: 700;
     color: var(--primary);
     background: var(--surface);
     border-radius: 50%;
     border: 2px solid var(--primary);
+    margin: 0;
+    padding: 0;
 }
 
 .app-title {
-    font-size: 22px; /* Уменьшили размер шрифта */
+    font-size: 20px; /* Компактный размер */
     font-weight: 800;
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     margin: 0;
+    padding: 0;
     line-height: 1;
+    display: flex;
+    align-items: center;
 }
 
-/* УБИРАЕМ СТАРЫЕ СТИЛИ user-avatar и user-info */
-.user-avatar {
-    display: none !important;
-}
-
+/* УБИРАЕМ ВСЕ СТАРЫЕ СТИЛИ */
+.user-avatar,
 .user-info {
     display: none !important;
 }
@@ -373,12 +380,13 @@ body {
 .header-actions {
     display: flex;
     align-items: center;
-    gap: var(--spacing-small); /* Уменьшили gap */
+    gap: 8px;
+    height: 100%;
 }
 
 .settings-btn {
-    width: 36px; /* Уменьшили размер кнопки */
-    height: 36px;
+    width: 32px;
+    height: 32px;
     border: none;
     background: var(--surface-secondary);
     border-radius: 50%;
@@ -389,6 +397,7 @@ body {
     color: var(--text-secondary);
     transition: var(--transition);
     border: 1px solid var(--border);
+    flex-shrink: 0;
 }
 
 .settings-btn:hover {
@@ -398,92 +407,108 @@ body {
 }
 
 .settings-btn svg {
-    width: 18px; /* Уменьшили размер иконки */
-    height: 18px;
+    width: 16px;
+    height: 16px;
 }
 
 .header-stats {
     text-align: center;
     background: var(--surface);
-    padding: 8px 12px; /* Уменьшили padding */
-    border-radius: var(--radius-small);
+    padding: 4px 8px; /* Минимальный padding */
+    border-radius: 8px;
     border: 1px solid var(--border);
     box-shadow: 0 2px 8px var(--shadow);
+    flex-shrink: 0;
 }
 
 .stat-number {
     display: block;
-    font-size: 20px; /* Уменьшили размер числа */
+    font-size: 16px;
     font-weight: 800;
     color: var(--primary);
     line-height: 1;
 }
 
 .stat-label {
-    font-size: 10px; /* Уменьшили размер подписи */
+    font-size: 9px;
     color: var(--text-secondary);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
 }
 
 /* Адаптивность для мобильных */
 @media (max-width: 480px) {
     .header {
-        padding: 12px var(--spacing-small); /* Еще меньше padding на мобильных */
+        padding: 6px var(--spacing-small); /* Еще меньше на мобильных */
+    }
+    
+    .header-content {
+        height: 36px; /* Еще ниже на мобильных */
     }
     
     .brand-section {
-        gap: 4px; /* Еще ближе на мобильных */
+        gap: 1px; /* Практически без отступа */
     }
     
     .app-title {
-        font-size: 18px; /* Еще меньше на мобильных */
+        font-size: 18px;
     }
     
     .logo-image {
-        height: 24px; /* Еще меньше логотип */
+        height: 20px;
     }
     
     .logo-fallback {
-        width: 24px;
-        height: 24px;
-        font-size: 14px;
+        width: 20px;
+        height: 20px;
+        font-size: 12px;
+        border-width: 1px;
     }
     
     .settings-btn {
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
     }
     
     .settings-btn svg {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
     }
     
     .header-stats {
-        padding: 6px 8px;
+        padding: 3px 6px;
     }
     
     .stat-number {
-        font-size: 16px;
+        font-size: 14px;
     }
     
     .stat-label {
-        font-size: 9px;
+        font-size: 8px;
     }
     
     .header-actions {
-        gap: 8px;
+        gap: 6px;
     }
 }
 
-/* Дополнительно - убедимся что остальные элементы не зависят от старой высоты header */
-.quick-add {
-    padding: var(--spacing);
-    max-width: 600px;
-    margin: 0 auto;
-    margin-top: 0; /* Убираем лишние отступы */
+/* Убираем любые лишние отступы которые могут влиять на расстояние */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Убедимся что нет лишних стилей применяющихся к логотипу или названию */
+.brand-section * {
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.app-logo * {
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 /* Быстрое добавление */
