@@ -42,6 +42,15 @@ class TasklyApp {
             document.documentElement.classList.add('dark-theme');
         }
         
+        // Отслеживаем изменения темы
+        tg.onEvent('themeChanged', () => {
+            if (tg.colorScheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            } else {
+                document.documentElement.classList.remove('dark-theme');
+            }
+        });
+        
         // Настройка главной кнопки
         tg.MainButton.setText('➕ Добавить задачу');
         tg.MainButton.color = '#007AFF';
@@ -347,7 +356,7 @@ class TasklyApp {
         if (!title) return;
 
         const description = document.getElementById('taskDescription').value.trim();
-        const priority = document.getElementById('taskPriority').value;
+        const priority = this.getSelectedPriority('taskPriority');
         const dueDate = document.getElementById('taskDueDate').value;
 
         try {
@@ -382,6 +391,20 @@ class TasklyApp {
         } catch (error) {
             console.error('Failed to add task:', error);
             this.showNotification('Ошибка при добавлении задачи', 'error');
+        }
+    }
+
+    // Получаем выбранный приоритет из радио-кнопок
+    getSelectedPriority(name) {
+        const selectedRadio = document.querySelector(`input[name="${name}"]:checked`);
+        return selectedRadio ? selectedRadio.value : 'medium';
+    }
+
+    // Устанавливаем выбранный приоритет
+    setSelectedPriority(name, value) {
+        const radio = document.querySelector(`input[name="${name}"][value="${value}"]`);
+        if (radio) {
+            radio.checked = true;
         }
     }
 
@@ -426,7 +449,7 @@ class TasklyApp {
         
         document.getElementById('editTaskTitle').value = task.title;
         document.getElementById('editTaskDescription').value = task.description || '';
-        document.getElementById('editTaskPriority').value = task.priority;
+        this.setSelectedPriority('editTaskPriority', task.priority);
         document.getElementById('editTaskDueDate').value = task.due_date ? 
             new Date(task.due_date).toISOString().slice(0, 16) : '';
         
@@ -443,7 +466,7 @@ class TasklyApp {
         }
 
         const description = document.getElementById('editTaskDescription').value.trim();
-        const priority = document.getElementById('editTaskPriority').value;
+        const priority = this.getSelectedPriority('editTaskPriority');
         const dueDate = document.getElementById('editTaskDueDate').value;
 
         try {
@@ -584,7 +607,7 @@ class TasklyApp {
     clearForm() {
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
-        document.getElementById('taskPriority').value = 'medium';
+        this.setSelectedPriority('taskPriority', 'medium');
         document.getElementById('addTaskBtn').disabled = true;
         
         // Устанавливаем новое время по умолчанию
