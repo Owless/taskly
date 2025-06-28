@@ -1153,6 +1153,28 @@ body {
     margin-bottom: var(--spacing);
 }
 
+.timezone-info {
+    margin-top: var(--spacing-small);
+    padding: var(--spacing-small);
+    background: var(--surface-secondary);
+    border-radius: var(--radius-small);
+    border: 1px solid var(--border);
+}
+
+.current-time {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.current-time::before {
+    content: '🕒';
+    font-size: 16px;
+}
+
 .settings-select {
     width: 100%;
     border: 2px solid var(--border);
