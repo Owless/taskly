@@ -24,14 +24,16 @@ class TasklyApp {
         await this.authenticate();
         await this.loadSettings();
         this.setupEventListeners();
+        this.setupLogo();
         await this.loadTasks();
         this.render();
         this.startPeriodicSync();
     }
 
     isTelegramEnvironment() {
-        // Проверяем наличие Telegram WebApp API
-        return window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData;
+        // Для разработки - можно закомментировать
+        return window.Telegram && window.Telegram.WebApp;
+        // return true; // Раскомментировать для тестирования без Telegram
     }
 
     showAccessDenied() {
@@ -41,29 +43,23 @@ class TasklyApp {
 
     initTelegramWebApp() {
         const tg = window.Telegram.WebApp;
+        if (!tg) return;
+        
         tg.ready();
         tg.expand();
         
-        // Настройка цветовой схемы
-        if (tg.colorScheme === 'dark') {
-            document.documentElement.classList.add('dark-theme');
-        }
+        // Принудительно применяем тему
+        this.applyTheme(tg.colorScheme);
         
         // Отслеживаем изменения темы
         tg.onEvent('themeChanged', () => {
-            if (tg.colorScheme === 'dark') {
-                document.documentElement.classList.add('dark-theme');
-            } else {
-                document.documentElement.classList.remove('dark-theme');
-            }
+            this.applyTheme(tg.colorScheme);
         });
         
         // Настройка главной кнопки
         tg.MainButton.setText('➕ Добавить задачу');
         tg.MainButton.color = '#007AFF';
         tg.MainButton.onClick(() => this.addTask());
-        
-        // Скрываем кнопку изначально
         tg.MainButton.hide();
 
         // Показываем приложение
@@ -71,8 +67,58 @@ class TasklyApp {
         document.getElementById('app').style.display = 'block';
     }
 
+    applyTheme(colorScheme) {
+        console.log('Applying theme:', colorScheme);
+        
+        // Убираем все классы темы
+        document.documentElement.classList.remove('dark-theme', 'light-theme');
+        
+        if (colorScheme === 'dark') {
+            document.documentElement.classList.add('dark-theme');
+        } else {
+            document.documentElement.classList.add('light-theme');
+        }
+        
+        // Принудительное обновление CSS переменных
+        setTimeout(() => {
+            document.body.style.display = 'none';
+            document.body.offsetHeight; // Trigger reflow
+            document.body.style.display = '';
+        }, 50);
+    }
+
+    setupLogo() {
+        // Используем LOGO_IMAGE_URL если доступен
+        const logoUrl = window.LOGO_IMAGE_URL || process.env.LOGO_IMAGE_URL;
+        
+        if (logoUrl) {
+            const logoImg = document.getElementById('logoImage');
+            const userInitials = document.getElementById('userInitials');
+            
+            logoImg.src = logoUrl;
+            logoImg.style.display = 'block';
+            userInitials.style.display = 'none';
+            
+            logoImg.onerror = () => {
+                logoImg.style.display = 'none';
+                userInitials.style.display = 'flex';
+            };
+        }
+    }
+
     async authenticate() {
         try {
+            // Для разработки без Telegram
+            if (!window.Telegram?.WebApp?.initData) {
+                this.currentUser = {
+                    telegram_id: 12345,
+                    first_name: 'Test',
+                    last_name: 'User'
+                };
+                this.updateUserInfo();
+                return;
+            }
+
             const initData = window.Telegram.WebApp.initData;
             
             const response = await fetch('/api/auth', {
@@ -108,19 +154,109 @@ class TasklyApp {
         return first + last || 'U';
     }
 
+    // Исправленная работа с часовыми поясами
+    getUserTimezone() {
+        if (this.settings.timezone === 'auto') {
+            try {
+                return Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (error) {
+                return 'Europe/Moscow';
+            }
+        }
+        return this.settings.timezone;
+    }
+
+    // Конвертация локального времени пользователя в UTC для сервера
+    convertLocalToUTC(localDateTimeString) {
+        if (!localDateTimeString) return null;
+        
+        try {
+            // Создаем объект Date из строки datetime-local
+            const localDate = new Date(localDateTimeString);
+            
+            // Получаем часовой пояс пользователя
+            const userTimezone = this.getUserTimezone();
+            
+            // Создаем дату в часовом поясе пользователя
+            const formatter = new Intl.DateTimeFormat('en-CA', {
+                timeZone: userTimezone,
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+            });
+            
+            const parts = formatter.formatToParts(localDate);
+            const partsObj = {};
+            parts.forEach(part => {
+                partsObj[part.type] = part.value;
+            });
+            
+            // Создаем строку ISO в часовом поясе пользователя
+            const isoString = `${partsObj.year}-${partsObj.month}-${partsObj.day}T${partsObj.hour}:${partsObj.minute}:${partsObj.second}`;
+            
+            // Создаем дату и конвертируем в UTC
+            const dateInUserTZ = new Date(isoString);
+            
+            // Получаем смещение часового пояса в минутах
+            const utcTime = dateInUserTZ.getTime();
+            const utcDate = new Date(utcTime);
+            
+            // Получаем смещение для конкретного часового пояса
+            const tempDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const tempDateInTZ = new Date(localDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            const timezoneOffset = tempDateInTZ.getTime() - tempDate.getTime();
+            
+            // Применяем смещение
+            const correctedUTC = new Date(utcDate.getTime() - timezoneOffset);
+            
+            return correctedUTC.toISOString();
+        } catch (error) {
+            console.error('Date conversion error:', error);
+            // Fallback - просто конвертируем как есть
+            return new Date(localDateTimeString).toISOString();
+        }
+    }
+
+    // Конвертация UTC с сервера в локальное время пользователя
+    convertUTCToLocal(utcDateString) {
+        if (!utcDateString) return '';
+        
+        try {
+            const utcDate = new Date(utcDateString);
+            const userTimezone = this.getUserTimezone();
+            
+            // Конвертируем в часовой пояс пользователя
+            const localDate = new Date(utcDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            
+            // Форматируем для datetime-local input
+            const year = localDate.getFullYear();
+            const month = String(localDate.getMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getDate()).padStart(2, '0');
+            const hours = String(localDate.getHours()).padStart(2, '0');
+            const minutes = String(localDate.getMinutes()).padStart(2, '0');
+            
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        } catch (error) {
+            console.error('UTC conversion error:', error);
+            return new Date(utcDateString).toISOString().slice(0, 16);
+        }
+    }
+
     // Настройки с синхронизацией сервера
     async loadSettings() {
         if (!this.currentUser) return;
 
         try {
-            // Пытаемся загрузить с сервера
             const response = await fetch(`/api/settings/${this.currentUser.telegram_id}`);
             const result = await response.json();
             
             if (result.success && result.settings) {
                 this.settings = { ...this.settings, ...result.settings };
             } else {
-                // Fallback на localStorage
                 const savedSettings = localStorage.getItem('taskly_settings');
                 if (savedSettings) {
                     this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
@@ -128,7 +264,6 @@ class TasklyApp {
             }
         } catch (error) {
             console.error('Failed to load settings from server:', error);
-            // Fallback на localStorage
             const savedSettings = localStorage.getItem('taskly_settings');
             if (savedSettings) {
                 this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
@@ -141,11 +276,9 @@ class TasklyApp {
     async saveSettings() {
         if (!this.currentUser) return;
 
-        // Сохраняем в localStorage
         localStorage.setItem('taskly_settings', JSON.stringify(this.settings));
 
         try {
-            // Сохраняем на сервере
             const response = await fetch(`/api/settings/${this.currentUser.telegram_id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -169,7 +302,7 @@ class TasklyApp {
     }
 
     updateCurrentTime() {
-        const timezone = this.settings.timezone === 'auto' ? this.getUserTimezone() : this.settings.timezone;
+        const timezone = this.getUserTimezone();
         const now = new Date();
         
         try {
@@ -189,14 +322,6 @@ class TasklyApp {
         }
     }
 
-    getUserTimezone() {
-        try {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone;
-        } catch (error) {
-            return 'Europe/Moscow'; // Fallback
-        }
-    }
-
     getTimezoneDisplayName(timezone) {
         const timezoneNames = {
             'Europe/Kaliningrad': 'Калининград',
@@ -210,6 +335,7 @@ class TasklyApp {
             'Asia/Vladivostok': 'Владивосток',
             'Asia/Magadan': 'Магадан',
             'Asia/Kamchatka': 'Камчатка',
+            'Europe/Kiev': 'Киев',
             'Europe/Minsk': 'Минск',
             'Asia/Almaty': 'Алматы',
             'Asia/Tashkent': 'Ташкент',
@@ -223,69 +349,6 @@ class TasklyApp {
         return timezoneNames[timezone] || timezone;
     }
 
-    // Получаем правильное время с учетом часового пояса пользователя
-    getUserDateTime(dateString = null) {
-        const timezone = this.settings.timezone === 'auto' ? this.getUserTimezone() : this.settings.timezone;
-        const date = dateString ? new Date(dateString) : new Date();
-        
-        try {
-            // Конвертируем в часовой пояс пользователя
-            const userDate = new Date(date.toLocaleString('en-US', { timeZone: timezone }));
-            return userDate;
-        } catch (error) {
-            console.error('Timezone conversion error:', error);
-            return date;
-        }
-    }
-
-    // Конвертируем локальное время пользователя в UTC для сервера
-    convertToUTC(localDateString) {
-        if (!localDateString) return null;
-        
-        const timezone = this.settings.timezone === 'auto' ? this.getUserTimezone() : this.settings.timezone;
-        
-        try {
-            // Создаем дату в часовом поясе пользователя
-            const localDate = new Date(localDateString);
-            
-            // Получаем смещение часового пояса
-            const tempDate = new Date(localDate.toLocaleString('en-US', { timeZone: timezone }));
-            const utcDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-            const offset = tempDate.getTime() - utcDate.getTime();
-            
-            // Корректируем дату
-            const correctedDate = new Date(localDate.getTime() - offset);
-            return correctedDate.toISOString();
-        } catch (error) {
-            console.error('UTC conversion error:', error);
-            return new Date(localDateString).toISOString();
-        }
-    }
-
-    // Конвертируем UTC с сервера в локальное время пользователя
-    convertFromUTC(utcDateString) {
-        if (!utcDateString) return '';
-        
-        const timezone = this.settings.timezone === 'auto' ? this.getUserTimezone() : this.settings.timezone;
-        
-        try {
-            const utcDate = new Date(utcDateString);
-            const localDate = new Date(utcDate.toLocaleString('en-US', { timeZone: timezone }));
-            
-            // Форматируем для datetime-local input
-            const year = localDate.getFullYear();
-            const month = String(localDate.getMonth() + 1).padStart(2, '0');
-            const day = String(localDate.getDate()).padStart(2, '0');
-            const hours = String(localDate.getHours()).padStart(2, '0');
-            const minutes = String(localDate.getMinutes()).padStart(2, '0');
-            
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
-        } catch (error) {
-            console.error('UTC parsing error:', error);
-            return new Date(utcDateString).toISOString().slice(0, 16);
-        }
-    }
-
     setupEventListeners() {
         // Добавление задач
         const taskInput = document.getElementById('taskTitle');
@@ -295,7 +358,6 @@ class TasklyApp {
             const hasText = e.target.value.trim().length > 0;
             addBtn.disabled = !hasText;
             
-            // Показываем/скрываем главную кнопку Telegram
             if (window.Telegram?.WebApp?.MainButton) {
                 if (hasText) {
                     window.Telegram.WebApp.MainButton.show();
@@ -327,16 +389,15 @@ class TasklyApp {
         // Кнопка настроек
         document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
         
-        // Модальное окно редактирования
+        // Модальные окна
         document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
         document.getElementById('saveTaskBtn').addEventListener('click', () => this.saveTask());
         document.getElementById('deleteTaskBtn').addEventListener('click', () => this.deleteTaskFromModal());
         
-        // Модальное окно настроек
         document.getElementById('closeSettingsModal').addEventListener('click', () => this.closeSettingsModal());
         document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettingsFromModal());
         
-        // Отслеживание изменений в настройках для live update времени
+        // Отслеживание изменений в настройках
         document.getElementById('timezoneSelect').addEventListener('change', () => {
             this.updateCurrentTime();
         });
@@ -344,17 +405,13 @@ class TasklyApp {
         // Поддержка проекта
         this.setupDonationListeners();
         
-        // Клик вне модального окна
+        // Клики вне модальных окон
         document.getElementById('editModal').addEventListener('click', (e) => {
-            if (e.target.id === 'editModal') {
-                this.closeModal();
-            }
+            if (e.target.id === 'editModal') this.closeModal();
         });
         
         document.getElementById('settingsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'settingsModal') {
-                this.closeSettingsModal();
-            }
+            if (e.target.id === 'settingsModal') this.closeSettingsModal();
         });
     }
 
@@ -363,9 +420,13 @@ class TasklyApp {
         now.setHours(now.getHours() + 1);
         now.setMinutes(0);
         
-        // Используем правильное время с учетом часового пояса
-        const userTime = this.getUserDateTime(now);
-        const dateString = userTime.toISOString().slice(0, 16);
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        
+        const dateString = `${year}-${month}-${day}T${hours}:${minutes}`;
         document.getElementById('taskDueDate').value = dateString;
     }
 
@@ -516,7 +577,6 @@ class TasklyApp {
         document.getElementById('settingsModal').style.display = 'flex';
         this.updateSettingsUI();
         
-        // Запускаем обновление времени
         if (this.timeDisplayInterval) {
             clearInterval(this.timeDisplayInterval);
         }
@@ -529,7 +589,6 @@ class TasklyApp {
     closeSettingsModal() {
         document.getElementById('settingsModal').style.display = 'none';
         
-        // Останавливаем обновление времени
         if (this.timeDisplayInterval) {
             clearInterval(this.timeDisplayInterval);
             this.timeDisplayInterval = null;
@@ -546,7 +605,6 @@ class TasklyApp {
         this.showNotification('Настройки сохранены! ⚙️', 'success');
         this.hapticFeedback('light');
         
-        // Обновляем дефолтное время в форме
         this.setDefaultDateTime();
     }
 
@@ -584,7 +642,7 @@ class TasklyApp {
                     title,
                     description,
                     priority,
-                    dueDate: this.convertToUTC(dueDate) // Конвертируем в UTC
+                    dueDate: this.convertLocalToUTC(dueDate) // Правильная конвертация в UTC
                 })
             });
 
@@ -664,8 +722,8 @@ class TasklyApp {
         document.getElementById('editTaskDescription').value = task.description || '';
         this.setSelectedPriority('editTaskPriority', task.priority);
         
-        // Конвертируем UTC в локальное время пользователя
-        document.getElementById('editTaskDueDate').value = this.convertFromUTC(task.due_date);
+        // Правильная конвертация UTC в локальное время
+        document.getElementById('editTaskDueDate').value = this.convertUTCToLocal(task.due_date);
         
         document.getElementById('editModal').style.display = 'flex';
     }
@@ -691,7 +749,7 @@ class TasklyApp {
                     title,
                     description: description || null,
                     priority,
-                    due_date: this.convertToUTC(dueDate) // Конвертируем в UTC
+                    due_date: this.convertLocalToUTC(dueDate) // Правильная конвертация в UTC
                 })
             });
 
@@ -770,8 +828,8 @@ class TasklyApp {
     }
 
     groupTasksByTime(tasks) {
-        const userNow = this.getUserDateTime();
-        const today = new Date(userNow.getFullYear(), userNow.getMonth(), userNow.getDate());
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         const nextWeek = new Date(today);
@@ -792,8 +850,10 @@ class TasklyApp {
                 return;
             }
 
-            // Конвертируем UTC дату с сервера в локальное время пользователя
-            const dueDate = this.getUserDateTime(task.due_date);
+            // Конвертируем UTC дату с сервера в локальную дату пользователя
+            const dueDateUTC = new Date(task.due_date);
+            const userTimezone = this.getUserTimezone();
+            const dueDate = new Date(dueDateUTC.toLocaleString('en-US', { timeZone: userTimezone }));
             const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
 
             if (dueDateOnly < today) {
@@ -834,10 +894,13 @@ class TasklyApp {
     formatDueDate(dateString) {
         if (!dateString) return '';
         
-        // Конвертируем UTC в локальное время пользователя
-        const date = this.getUserDateTime(dateString);
-        const userNow = this.getUserDateTime();
-        const today = new Date(userNow.getFullYear(), userNow.getMonth(), userNow.getDate());
+        // Конвертируем UTC в локальное время пользователя для отображения
+        const dueDateUTC = new Date(dateString);
+        const userTimezone = this.getUserTimezone();
+        const date = new Date(dueDateUTC.toLocaleString('en-US', { timeZone: userTimezone }));
+        
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         
@@ -1000,6 +1063,9 @@ class TasklyApp {
         }, 30000);
     }
 }
+
+// Глобальная переменная для логотипа
+window.LOGO_IMAGE_URL = process?.env?.LOGO_IMAGE_URL;
 
 // Инициализация приложения
 const app = new TasklyApp();
