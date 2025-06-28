@@ -77,7 +77,7 @@ bot.onText(/\/start/, async (msg) => {
 - Создавать и управлять задачами
 - Устанавливать приоритеты
 - Отмечать выполненные дела
-- Фильтровать по статусу
+- Архив по месяцам
 
 💡 *Команды:*
 /help - помощь
@@ -95,7 +95,7 @@ bot.onText(/\/start/, async (msg) => {
       ],
       [
         { text: '❓ Помощь', callback_data: 'help' },
-        { text: '💫 Поддержать', callback_data: 'donate' }
+        { text: '💙 Поддержать', callback_data: 'donate' }
       ]
     ]
   };
@@ -121,7 +121,7 @@ bot.onText(/\/help/, async (msg) => {
 - 🎨 Установка приоритетов (низкий/средний/высокий)
 - 📅 Установка сроков выполнения
 - 🔄 Отметка выполненных задач
-- 🔍 Фильтрация задач
+- 📁 Архив задач по месяцам
 
 📱 *Как пользоваться:*
 1. Нажми "Открыть Taskly" 
@@ -132,11 +132,11 @@ bot.onText(/\/help/, async (msg) => {
 6. Нажми "Добавить задачу"
 
 🔧 *Управление:*
-- Нажми на чекбокс чтобы отметить выполненную
-- Используй фильтры: Все/Активные/Выполненные
-- Кнопка "Удалить" для удаления задачи
+- Кнопка "Выполнить" справа от задачи
+- Клик по задаче для редактирования
+- Фильтр "Архив" показывает выполненные задачи по месяцам
 
-💫 *Поддержать проект:* /donate
+💙 *Поддержать проект:* /donate
 
 Остались вопросы? Пиши разработчику`;
 
@@ -168,11 +168,11 @@ bot.onText(/\/donate/, async (msg) => {
 
 // Показать варианты пожертвований
 async function showDonateOptions(chatId) {
-  const donateMessage = `💫 *Поддержать Taskly*
+  const donateMessage = `💙 *Поддержать Taskly*
 
 Спасибо, что хочешь поддержать развитие проекта! 
 
-🌟 *Выбери сумму или введи свою:*
+⭐ *Выбери сумму или введи свою:*
 
 Все средства идут на развитие и улучшение приложения.`;
 
@@ -188,7 +188,7 @@ async function showDonateOptions(chatId) {
         { text: '50 ⭐', callback_data: 'donate_50' }
       ],
       [
-        { text: '💫 Другая сумма', callback_data: 'donate_custom' }
+        { text: '💙 Другая сумма', callback_data: 'donate_custom' }
       ],
       [
         {
@@ -215,13 +215,13 @@ async function createInvoice(chatId, amount, description) {
     console.log(`Creating invoice for ${amount} stars to user ${chatId}`);
     
     await bot.sendInvoice(
-      chatId,                                    // chat_id
-      'Поддержка Taskly',                       // title (обязательно)
-      description,                              // description (обязательно)
-      `donation_${chatId}_${Date.now()}`,       // payload (обязательно)
-      '',                                       // provider_token (пустой для Stars)
-      'XTR',                                   // currency (XTR для Stars)
-      [{ label: `${amount} Stars`, amount: amount }], // prices (обязательно)
+      chatId,                                    
+      'Поддержка Taskly',                       
+      description,                              
+      `donation_${chatId}_${Date.now()}`,       
+      '',                                       
+      'XTR',                                   
+      [{ label: `${amount} Stars`, amount: amount }], 
       {
         max_tip_amount: 0,
         suggested_tip_amounts: []
@@ -267,28 +267,28 @@ bot.on('callback_query', async (callbackQuery) => {
         break;
       
       case 'donate_1':
-        await createInvoice(chatId, 1, '🌟 Поддержка проекта - 1 звезда');
+        await createInvoice(chatId, 1, '💙 Поддержка проекта - 1 звезда');
         break;
       
       case 'donate_5':
-        await createInvoice(chatId, 5, '⭐ Спасибо за поддержку - 5 звезд!');
+        await createInvoice(chatId, 5, '💙 Спасибо за поддержку - 5 звезд!');
         break;
       
       case 'donate_10':
-        await createInvoice(chatId, 10, '🌟 Ты великолепен - 10 звезд!');
+        await createInvoice(chatId, 10, '💙 Ты великолепен - 10 звезд!');
         break;
       
       case 'donate_25':
-        await createInvoice(chatId, 25, '✨ Потрясающая поддержка - 25 звезд!');
+        await createInvoice(chatId, 25, '💙 Потрясающая поддержка - 25 звезд!');
         break;
       
       case 'donate_50':
-        await createInvoice(chatId, 50, '🚀 Невероятная поддержка - 50 звезд!');
+        await createInvoice(chatId, 50, '💙 Невероятная поддержка - 50 звезд!');
         break;
       
       case 'donate_custom':
         await bot.sendMessage(chatId, 
-          '💫 Введи сумму Stars для пожертвования (от 1 до 2500):\n\n' +
+          '💙 Введи сумму Stars для пожертвования (от 1 до 2500):\n\n' +
           'Например: 25'
         );
         userStates.set(chatId, 'waiting_donation_amount');
@@ -328,7 +328,7 @@ bot.on('message', async (msg) => {
     }
 
     userStates.delete(chatId);
-    await createInvoice(chatId, amount, `💫 Поддержка на ${amount} Stars`);
+    await createInvoice(chatId, amount, `💙 Поддержка на ${amount} Stars`);
   }
 });
 
@@ -380,9 +380,9 @@ bot.on('successful_payment', async (msg) => {
 
 ${firstName}, ты потрясающий! Твое пожертвование в ${amount} ⭐ очень важно для развития проекта.
 
-🚀 Благодаря таким людям как ты, Taskly становится лучше!
+💙 Благодаря таким людям как ты, Taskly становится лучше!
 
-💪 Продолжай эффективно управлять своими задачами!`;
+🚀 Продолжай эффективно управлять своими задачами!`;
 
   const keyboard = {
     inline_keyboard: [
@@ -393,7 +393,7 @@ ${firstName}, ты потрясающий! Твое пожертвование �
         }
       ],
       [
-        { text: '💫 Поддержать еще', callback_data: 'donate' }
+        { text: '💙 Поддержать еще', callback_data: 'donate' }
       ]
     ]
   };
@@ -408,13 +408,26 @@ ${firstName}, ты потрясающий! Твое пожертвование �
   }
 });
 
-// Обработка ошибок бота
-bot.on('polling_error', (error) => {
-  console.error('Telegram polling error:', error);
-});
+// API: Создание платежа из приложения
+app.post('/api/create-payment', async (req, res) => {
+  try {
+    const { telegramId, amount } = req.body;
+    
+    if (!telegramId || !amount || amount < 1 || amount > 2500) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Некорректные параметры платежа' 
+      });
+    }
 
-bot.on('webhook_error', (error) => {
-  console.error('Telegram webhook error:', error);
+    // Создаем инвойс через бота
+    await createInvoice(telegramId, amount, `💙 Поддержка Taskly - ${amount} Stars`);
+    
+    res.json({ success: true, message: 'Платеж создан' });
+  } catch (error) {
+    console.error('Create payment error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
 });
 
 // Главная страница
@@ -422,30 +435,27 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// API: Авторизация
+// API: Авторизация (убираем тестового пользователя)
 app.post('/api/auth', async (req, res) => {
   try {
     const { initData } = req.body;
     
+    if (!initData || !initData.includes('user=')) {
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Доступ только через Telegram' 
+      });
+    }
+
     let userData;
     try {
-      if (initData && initData.includes('user=')) {
-        const userDataString = initData.split('user=')[1].split('&')[0];
-        userData = JSON.parse(decodeURIComponent(userDataString));
-      } else {
-        // Фоллбэк для тестирования
-        userData = {
-          id: 123456,
-          first_name: "Test User",
-          username: "testuser"
-        };
-      }
+      const userDataString = initData.split('user=')[1].split('&')[0];
+      userData = JSON.parse(decodeURIComponent(userDataString));
     } catch (parseError) {
-      userData = {
-        id: Date.now(),
-        first_name: "Test User",
-        username: "testuser"
-      };
+      return res.status(401).json({ 
+        success: false, 
+        error: 'Некорректные данные авторизации' 
+      });
     }
 
     console.log('User auth:', userData.id);
@@ -481,7 +491,7 @@ app.post('/api/auth', async (req, res) => {
   }
 });
 
-// API: Получить задачи
+// Остальные API endpoints (без изменений)
 app.get('/api/tasks/:telegramId', async (req, res) => {
   try {
     const { telegramId } = req.params;
@@ -511,7 +521,6 @@ app.get('/api/tasks/:telegramId', async (req, res) => {
   }
 });
 
-// API: Создать задачу
 app.post('/api/tasks', async (req, res) => {
   try {
     const { telegramId, title, description, priority, dueDate } = req.body;
@@ -545,7 +554,6 @@ app.post('/api/tasks', async (req, res) => {
   }
 });
 
-// API: Обновить задачу
 app.put('/api/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -567,7 +575,6 @@ app.put('/api/tasks/:id', async (req, res) => {
   }
 });
 
-// API: Удалить задачу
 app.delete('/api/tasks/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -582,33 +589,6 @@ app.delete('/api/tasks/:id', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Delete task error:', error);
-    res.status(400).json({ success: false, error: error.message });
-  }
-});
-
-// Статистика донатов (опционально)
-app.get('/api/donations/stats', async (req, res) => {
-  try {
-    const { data: stats, error } = await supabaseAdmin
-      .from('donations')
-      .select('amount')
-      .eq('currency', 'XTR');
-
-    if (error) throw error;
-
-    const totalAmount = stats.reduce((sum, donation) => sum + donation.amount, 0);
-    const totalDonations = stats.length;
-
-    res.json({ 
-      success: true, 
-      stats: { 
-        totalAmount, 
-        totalDonations,
-        averageAmount: totalDonations > 0 ? Math.round(totalAmount / totalDonations) : 0
-      } 
-    });
-  } catch (error) {
-    console.error('Get donation stats error:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -636,13 +616,4 @@ process.on('SIGINT', async () => {
   }
   
   process.exit(0);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
 });
