@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskly - Task Manager</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>📝 Taskly</h1>
+            <div id="userInfo"></div>
+        </header>
+
+        <div id="loading" class="loading">Загрузка...</div>
+        
+        <div id="mainContent" style="display: none;">
+            <div class="add-task">
+                <input type="text" id="taskTitle" placeholder="Название задачи" maxlength="500">
+                <textarea id="taskDescription" placeholder="Описание (опционально)" rows="2"></textarea>
+                <select id="taskPriority">
+                    <option value="low">Низкий приоритет</option>
+                    <option value="medium" selected>Средний приоритет</option>
+                    <option value="high">Высокий приоритет</option>
+                </select>
+                <input type="datetime-local" id="taskDueDate">
+                <button id="addTaskBtn">Добавить задачу</button>
+            </div>
+
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="pending">Активные</button>
+                <button class="filter-btn" data-filter="completed">Выполненные</button>
+            </div>
+
+            <div id="tasksList" class="tasks-list"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
