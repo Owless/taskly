@@ -3,40 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Taskly - Task Manager</title>
+    <title>Taskly - Smart Task Manager</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="app">
-        <header>
-            <h1>📝 Taskly</h1>
-            <div id="userInfo"></div>
-        </header>
-
-        <div id="loading" class="loading">Загрузка...</div>
-        
-        <div id="mainContent" style="display: none;">
-            <div class="add-task">
-                <input type="text" id="taskTitle" placeholder="Название задачи" maxlength="500">
-                <textarea id="taskDescription" placeholder="Описание (опционально)" rows="2"></textarea>
-                <select id="taskPriority">
-                    <option value="low">Низкий приоритет</option>
-                    <option value="medium" selected>Средний приоритет</option>
-                    <option value="high">Высокий приоритет</option>
-                </select>
-                <input type="datetime-local" id="taskDueDate">
-                <button id="addTaskBtn">Добавить задачу</button>
+    <div id="app" class="app">
+        <!-- Загрузка -->
+        <div id="loading" class="loading-screen">
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Загружаем ваши задачи...</p>
             </div>
-
-            <div class="filters">
-                <button class="filter-btn active" data-filter="all">Все</button>
-                <button class="filter-btn" data-filter="pending">Активные</button>
-                <button class="filter-btn" data-filter="completed">Выполненные</button>
-            </div>
-
-            <div id="tasksList" class="tasks-list"></div>
         </div>
+
+        <!-- Основное приложение -->
+        <div id="mainContent" style="display: none;">
+            <!-- Заголовок -->
+            <header class="header">
+                <div class="header-content">
+                    <div class="user-avatar">
+                        <span id="userInitials">TU</span>
+                    </div>
+                    <div class="user-info">
+                        <h1 class="app-title">Taskly</h1>
+                        <p id="userGreeting" class="user-greeting">Привет, User!</p>
+                    </div>
+                    <div class="header-stats">
+                        <div class="stat">
+                            <span id="activeCount" class="stat-number">0</span>
+                            <span class="stat-label">активных</span>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Быстрое добавление задачи -->
+            <section class="quick-add">
+                <div class="quick-add-form">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="taskTitle" 
+                            placeholder="Что нужно сделать?" 
+                            maxlength="500"
+                            class="task-input"
+                        >
+                        <button id="addTaskBtn" class="add-btn" disabled>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <!-- Расширенные опции -->
+                    <div id="expandedOptions" class="expanded-options" style="display: none;">
+                        <textarea 
+                            id="taskDescription" 
+                            placeholder="Добавить описание..." 
+                            rows="2"
+                            class="description-input"
+                        ></textarea>
+                        
+                        <div class="options-row">
+                            <select id="taskPriority" class="priority-select">
+                                <option value="low">🟢 Низкий</option>
+                                <option value="medium" selected>🟡 Средний</option>
+                                <option value="high">🔴 Высокий</option>
+                            </select>
+                            
+                            <input type="datetime-local" id="taskDueDate" class="date-input">
+                        </div>
+                    </div>
+                    
+                    <button id="toggleOptions" class="toggle-options">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                            <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                        Дополнительно
+                    </button>
+                </div>
+            </section>
+
+            <!-- Фильтры -->
+            <section class="filters-section">
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="active">
+                        <span class="filter-icon">⚡</span>
+                        Активные
+                    </button>
+                    <button class="filter-btn" data-filter="all">
+                        <span class="filter-icon">📋</span>
+                        Все
+                    </button>
+                    <button class="filter-btn" data-filter="completed">
+                        <span class="filter-icon">✅</span>
+                        Архив
+                    </button>
+                </div>
+            </section>
+
+            <!-- Список задач -->
+            <section class="tasks-section">
+                <div id="tasksList" class="tasks-list"></div>
+            </section>
+
+            <!-- Пустое состояние -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-illustration">
+                    <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
+                        <circle cx="60" cy="60" r="50" fill="#f0f2f5"/>
+                        <path d="M40 60h40M60 40v40" stroke="#8b9dc3" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h3 id="emptyTitle">Все задачи выполнены! 🎉</h3>
+                <p id="emptySubtitle">Время для новых целей</p>
+            </div>
+
+            <!-- Поддержка проекта -->
+            <section class="support-section">
+                <div class="support-card">
+                    <div class="support-content">
+                        <div class="support-icon">❤️</div>
+                        <div class="support-text">
+                            <h4>Нравится приложение?</h4>
+                            <p>Поддержи развитие проекта</p>
+                        </div>
+                    </div>
+                    
+                    <div class="support-form">
+                        <div class="amount-input-group">
+                            <input 
+                                type="number" 
+                                id="donationAmount" 
+                                placeholder="Сумма" 
+                                min="1" 
+                                max="2500"
+                                class="amount-input"
+                            >
+                            <span class="currency">⭐</span>
+                        </div>
+                        <button id="donateBtn" class="donate-btn" disabled>
+                            Поддержать
+                        </button>
+                    </div>
+                    
+                    <div class="quick-amounts">
+                        <button class="quick-amount" data-amount="1">1⭐</button>
+                        <button class="quick-amount" data-amount="5">5⭐</button>
+                        <button class="quick-amount" data-amount="10">10⭐</button>
+                        <button class="quick-amount" data-amount="25">25⭐</button>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Модальное окно редактирования -->
+        <div id="editModal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Редактировать задачу</h3>
+                    <button id="closeModal" class="close-btn">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                            <path d="M18 6L6 18M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="modal-body">
+                    <input type="text" id="editTaskTitle" placeholder="Название задачи" class="modal-input">
+                    <textarea id="editTaskDescription" placeholder="Описание" rows="3" class="modal-textarea"></textarea>
+                    
+                    <div class="modal-options">
+                        <select id="editTaskPriority" class="modal-select">
+                            <option value="low">🟢 Низкий приоритет</option>
+                            <option value="medium">🟡 Средний приоритет</option>
+                            <option value="high">🔴 Высокий приоритет</option>
+                        </select>
+                        
+                        <input type="datetime-local" id="editTaskDueDate" class="modal-input">
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button id="deleteTaskBtn" class="delete-btn-modal">Удалить</button>
+                    <button id="saveTaskBtn" class="save-btn">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Уведомления -->
+        <div id="notifications" class="notifications"></div>
     </div>
 
     <script src="script.js"></script>
