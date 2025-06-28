@@ -19,7 +19,7 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 app.use(express.json());
 app.use(express.static('.'));
 
-// API для создания инвойса (для платежей внутри приложения)
+// API для создания инвойса
 app.post('/api/create-invoice', async (req, res) => {
   try {
     const { amount, payload, userId } = req.body;
@@ -35,7 +35,7 @@ app.post('/api/create-invoice', async (req, res) => {
       title: 'Поддержка Taskly',
       description: `Поддержка разработки приложения Taskly`,
       payload: payload,
-      provider_token: '', // Пустой для Telegram Stars
+      provider_token: '',
       currency: 'XTR',
       prices: JSON.stringify([{ 
         label: `${amount} Stars`, 
@@ -53,7 +53,6 @@ app.post('/api/create-invoice', async (req, res) => {
 
     console.log('Creating invoice for:', amount, 'stars for user:', userId);
 
-    // Создаем invoice link через Telegram Bot API
     const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/createInvoiceLink`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -84,7 +83,6 @@ app.post('/api/create-invoice', async (req, res) => {
       console.log('✅ Pending donation saved');
     } catch (dbError) {
       console.error('❌ Error saving pending donation:', dbError);
-      // Не останавливаем процесс, если не удалось сохранить в БД
     }
     
     res.json({ 
@@ -101,7 +99,7 @@ app.post('/api/create-invoice', async (req, res) => {
   }
 });
 
-// API для получения токена бота (если нужно для других целей)
+// API для получения токена бота
 app.get('/api/bot-token', (req, res) => {
   res.json({ token: process.env.TELEGRAM_BOT_TOKEN });
 });
@@ -132,6 +130,7 @@ bot.onText(/\/start/, async (msg) => {
 - Устанавливать приоритеты и сроки
 - Отмечать выполненные дела
 - Группировка по времени выполнения
+- Настройка часового пояса
 
 💡 *Команды:*
 /help - помощь
@@ -208,6 +207,11 @@ bot.onText(/\/help/, async (msg) => {
 - Нажми на задачу для редактирования
 - Используй шестеренку для настройки часового пояса и уведомлений
 
+⚙️ *Настройки:*
+- Выбор часового пояса из всех регионов России и СНГ
+- Настройка уведомлений и звуков
+- Автоматическое определение времени
+
 Остались вопросы? Пиши разработчику`;
 
   const keyboard = {
@@ -237,7 +241,6 @@ bot.on('callback_query', async (callbackQuery) => {
   const data = callbackQuery.data;
   
   if (data === 'help') {
-    // Показываем справку
     bot.answerCallbackQuery(callbackQuery.id);
     
     const helpMessage = `📖 *Справка по Taskly*
@@ -334,12 +337,11 @@ ${firstName}, ты потрясающий! Твое пожертвование �
   }
 });
 
-// Обработка предварительных запросов платежей (pre_checkout_query)
+// Обработка предварительных запросов платежей
 bot.on('pre_checkout_query', async (preCheckoutQuery) => {
   console.log('Pre-checkout query received:', preCheckoutQuery);
   
   try {
-    // Всегда подтверждаем платеж (можно добавить дополнительные проверки)
     await bot.answerPreCheckoutQuery(preCheckoutQuery.id, true);
     console.log('✅ Pre-checkout query approved');
   } catch (error) {
@@ -392,7 +394,12 @@ app.post('/api/auth', async (req, res) => {
           telegram_id: userData.id,
           username: userData.username || null,
           first_name: userData.first_name || null,
-          last_name: userData.last_name || null
+          last_name: userData.last_name || null,
+          settings: {
+            timezone: 'auto',
+            notificationsEnabled: true,
+            soundEnabled: true
+          }
         })
         .select()
         .single();
@@ -404,6 +411,52 @@ app.post('/api/auth', async (req, res) => {
     res.json({ success: true, user });
   } catch (error) {
     console.error('Auth error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+// API: Настройки пользователя
+app.get('/api/settings/:telegramId', async (req, res) => {
+  try {
+    const { telegramId } = req.params;
+    
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .select('settings')
+      .eq('telegram_id', telegramId)
+      .single();
+
+    if (error) {
+      return res.json({ success: true, settings: null });
+    }
+
+    res.json({ success: true, settings: user.settings });
+  } catch (error) {
+    console.error('Get settings error:', error);
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+app.put('/api/settings/:telegramId', async (req, res) => {
+  try {
+    const { telegramId } = req.params;
+    const { settings } = req.body;
+    
+    const { data: user, error } = await supabaseAdmin
+      .from('users')
+      .update({ 
+        settings: settings,
+        updated_at: new Date().toISOString()
+      })
+      .eq('telegram_id', telegramId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ success: true, settings: user.settings });
+  } catch (error) {
+    console.error('Update settings error:', error);
     res.status(400).json({ success: false, error: error.message });
   }
 });
@@ -465,6 +518,7 @@ app.post('/api/tasks', async (req, res) => {
 
     if (userError) throw userError;
 
+    // Дата уже приходит в UTC, сохраняем как есть
     const { data: task, error } = await supabaseAdmin
       .from('tasks')
       .insert({
@@ -472,7 +526,7 @@ app.post('/api/tasks', async (req, res) => {
         title: title.trim(),
         description: description ? description.trim() : null,
         priority: priority || 'medium',
-        due_date: dueDate || null
+        due_date: dueDate || null // Уже в UTC
       })
       .select()
       .single();
@@ -506,7 +560,7 @@ app.put('/api/tasks/:id', async (req, res) => {
       });
     }
     
-    // Если отмечаем как выполненную, добавляем completed_at
+    // Если отмечаем как выполненную, добавляем completed_at в UTC
     if (updates.completed && !updates.completed_at) {
       updates.completed_at = new Date().toISOString();
     } else if (updates.completed === false) {
@@ -520,6 +574,8 @@ app.put('/api/tasks/:id', async (req, res) => {
     if (updates.description) {
       updates.description = updates.description.trim();
     }
+    
+    // due_date уже приходит в UTC, сохраняем как есть
     
     const { data: task, error } = await supabaseAdmin
       .from('tasks')
