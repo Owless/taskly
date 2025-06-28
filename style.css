@@ -57,6 +57,8 @@
 }
 
 /* Светлая тема - принудительное применение */
+:root[data-theme="light"],
+.light-theme,
 :root.light-theme,
 body.light-theme {
     --primary: #007AFF !important;
@@ -90,9 +92,13 @@ body.light-theme {
     --gradient-primary: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%) !important;
     --gradient-surface: linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%) !important;
     --gradient-support: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%) !important;
+
+    color-scheme: light !important;
 }
 
 /* Темная тема - принудительное применение */
+:root[data-theme="dark"],
+.dark-theme,
 :root.dark-theme,
 body.dark-theme {
     --primary: #0A84FF !important;
@@ -126,42 +132,38 @@ body.dark-theme {
     --gradient-primary: linear-gradient(135deg, #0A84FF 0%, #5AC8FA 100%) !important;
     --gradient-surface: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%) !important;
     --gradient-support: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%) !important;
+
+    color-scheme: dark !important;
 }
 
-/* Автоматическая темная тема только для браузеров БЕЗ Telegram */
-@media (prefers-color-scheme: dark) {
-    :root:not(.light-theme):not(.dark-theme) {
-        --primary: #0A84FF;
-        --primary-light: #409CFF;
-        --primary-dark: #0056CC;
-        --secondary: #5AC8FA;
-        --accent: #30D158;
-        --warning: #FF9F0A;
-        --danger: #FF453A;
-        
-        --background: #000000;
-        --surface: #1C1C1E;
-        --surface-secondary: #2C2C2E;
-        --surface-elevated: #3A3A3C;
-        --text-primary: #FFFFFF;
-        --text-secondary: #8E8E93;
-        --text-tertiary: #636366;
-        --border: #38383A;
-        --border-light: #48484A;
-        --shadow: rgba(0, 0, 0, 0.3);
-        --shadow-elevated: rgba(0, 0, 0, 0.5);
-        
-        --priority-low: #30D158;
-        --priority-low-bg: rgba(48, 209, 88, 0.15);
-        --priority-medium: #FF9F0A;
-        --priority-medium-bg: rgba(255, 159, 10, 0.15);
-        --priority-high: #FF453A;
-        --priority-high-bg: rgba(255, 69, 58, 0.15);
-        
-        --gradient-primary: linear-gradient(135deg, #0A84FF 0%, #5AC8FA 100%);
-        --gradient-surface: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
-        --gradient-support: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%);
-    }
+/* Принудительное применение всем элементам темной темы */
+.dark-theme *,
+:root[data-theme="dark"] * {
+    color-scheme: dark !important;
+}
+
+.dark-theme input,
+.dark-theme textarea,
+.dark-theme select,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+    color-scheme: dark !important;
+}
+
+/* Принудительное применение всем элементам светлой темы */
+.light-theme *,
+:root[data-theme="light"] * {
+    color-scheme: light !important;
+}
+
+.light-theme input,
+.light-theme textarea,
+.light-theme select,
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea,
+:root[data-theme="light"] select {
+    color-scheme: light !important;
 }
 
 /* Блокировка доступа */
@@ -1480,44 +1482,75 @@ select:focus-visible {
     animation-delay: 0.3s;
 }
 
-/* Принудительное применение темных стилей */
-.dark-theme * {
-    color-scheme: dark;
-}
-
-.dark-theme input,
-.dark-theme textarea,
-.dark-theme select {
-    color-scheme: dark;
-}
-
-/* Дополнительные стили для темной темы */
-.dark-theme .task-item {
+/* Дополнительные стили для принудительного применения темы */
+.dark-theme .task-item,
+:root[data-theme="dark"] .task-item {
     background: var(--surface) !important;
     border-color: var(--border) !important;
 }
 
-.dark-theme .modal-content {
+.dark-theme .modal-content,
+:root[data-theme="dark"] .modal-content {
     background: var(--surface) !important;
     border-color: var(--border) !important;
 }
 
-.dark-theme .quick-add-form {
+.dark-theme .quick-add-form,
+:root[data-theme="dark"] .quick-add-form {
     background: var(--surface) !important;
     border-color: var(--border) !important;
 }
 
-.dark-theme .support-card {
+.dark-theme .support-card,
+:root[data-theme="dark"] .support-card {
     background: var(--gradient-support) !important;
     border-color: var(--border) !important;
 }
 
-.dark-theme .filters {
+.dark-theme .filters,
+:root[data-theme="dark"] .filters {
     background: var(--surface) !important;
     border-color: var(--border) !important;
 }
 
-.dark-theme .header {
+.dark-theme .header,
+:root[data-theme="dark"] .header {
+    background: var(--gradient-surface) !important;
+    border-bottom-color: var(--border) !important;
+}
+
+.light-theme .task-item,
+:root[data-theme="light"] .task-item {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.light-theme .modal-content,
+:root[data-theme="light"] .modal-content {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.light-theme .quick-add-form,
+:root[data-theme="light"] .quick-add-form {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.light-theme .support-card,
+:root[data-theme="light"] .support-card {
+    background: var(--gradient-support) !important;
+    border-color: var(--border) !important;
+}
+
+.light-theme .filters,
+:root[data-theme="light"] .filters {
+    background: var(--surface) !important;
+    border-color: var(--border) !important;
+}
+
+.light-theme .header,
+:root[data-theme="light"] .header {
     background: var(--gradient-surface) !important;
     border-bottom-color: var(--border) !important;
 }
