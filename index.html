@@ -51,28 +51,30 @@
         <div id="mainContent" style="display: none;">
             <!-- Заголовок -->
             <header class="header">
-  <div class="header-content">
-    <div class="app-logo">
-      <img id="logoImage" src="" alt="Taskly Logo" class="logo-image" style="display: none;">
-    </div>
-    <h1 class="app-title">Taskly</h1>
-    <div class="header-actions">
-      <button id="settingsBtn" class="settings-btn" aria-label="Settings">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
-          <path d="M12 1v6m0 10v6m11-7h-6M6 12H0" stroke="currentColor" stroke-width="2"/>
-        </svg>
-      </button>
-      <div class="header-stats">
-        <div class="stat">
-          <span id="activeCount" class="stat-number">0</span>
-          <span class="stat-label">активных</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</header>
-
+                <div class="header-content">
+                    <div class="brand-section">
+                        <div class="app-logo">
+                            <img id="logoImage" src="" alt="Taskly Logo" class="logo-image" style="display: none;">
+                            <span id="userInitials" class="logo-fallback">T</span>
+                        </div>
+                        <h1 class="app-title">Taskly</h1>
+                    </div>
+                    <div class="header-actions">
+                        <button id="settingsBtn" class="settings-btn" aria-label="Settings">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
+                                <path d="M12 1v6m0 10v6m11-7h-6M6 12H0" stroke="currentColor" stroke-width="2"/>
+                            </svg>
+                        </button>
+                        <div class="header-stats">
+                            <div class="stat">
+                                <span id="activeCount" class="stat-number">0</span>
+                                <span class="stat-label">активных</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
 
             <!-- Быстрое добавление задачи -->
             <section class="quick-add">
