@@ -24,7 +24,7 @@
             <div class="access-steps">
                 <div class="step">
                     <span class="step-number">1</span>
-                    <span>Найдите бота @TasklyBot в Telegram</span>
+                    <span>Найдите бота @Tasklyclub_bot в Telegram</span>
                 </div>
                 <div class="step">
                     <span class="step-number">2</span>
@@ -96,11 +96,33 @@
                         ></textarea>
                         
                         <div class="options-row">
-                            <select id="taskPriority" class="priority-select">
-                                <option value="low">🟢 Низкий</option>
-                                <option value="medium" selected>🟡 Средний</option>
-                                <option value="high">🔴 Высокий</option>
-                            </select>
+                            <!-- Современные чекбоксы приоритетов -->
+                            <div class="priority-selector">
+                                <label class="priority-label">Приоритет:</label>
+                                <div class="priority-options">
+                                    <label class="priority-option" data-priority="low">
+                                        <input type="radio" name="taskPriority" value="low">
+                                        <span class="priority-radio low">
+                                            <span class="priority-icon">🟢</span>
+                                            <span class="priority-text">Низкий</span>
+                                        </span>
+                                    </label>
+                                    <label class="priority-option" data-priority="medium">
+                                        <input type="radio" name="taskPriority" value="medium" checked>
+                                        <span class="priority-radio medium">
+                                            <span class="priority-icon">🟡</span>
+                                            <span class="priority-text">Средний</span>
+                                        </span>
+                                    </label>
+                                    <label class="priority-option" data-priority="high">
+                                        <input type="radio" name="taskPriority" value="high">
+                                        <span class="priority-radio high">
+                                            <span class="priority-icon">🔴</span>
+                                            <span class="priority-text">Высокий</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
                             
                             <input type="datetime-local" id="taskDueDate" class="date-input">
                         </div>
@@ -201,11 +223,33 @@
                     <textarea id="editTaskDescription" placeholder="Описание" rows="3" class="modal-textarea"></textarea>
                     
                     <div class="modal-options">
-                        <select id="editTaskPriority" class="modal-select">
-                            <option value="low">🟢 Низкий приоритет</option>
-                            <option value="medium">🟡 Средний приоритет</option>
-                            <option value="high">🔴 Высокий приоритет</option>
-                        </select>
+                        <!-- Современные чекбоксы приоритетов в модалке -->
+                        <div class="priority-selector">
+                            <label class="priority-label">Приоритет:</label>
+                            <div class="priority-options modal-priority">
+                                <label class="priority-option" data-priority="low">
+                                    <input type="radio" name="editTaskPriority" value="low">
+                                    <span class="priority-radio low">
+                                        <span class="priority-icon">🟢</span>
+                                        <span class="priority-text">Низкий</span>
+                                    </span>
+                                </label>
+                                <label class="priority-option" data-priority="medium">
+                                    <input type="radio" name="editTaskPriority" value="medium">
+                                    <span class="priority-radio medium">
+                                        <span class="priority-icon">🟡</span>
+                                        <span class="priority-text">Средний</span>
+                                    </span>
+                                </label>
+                                <label class="priority-option" data-priority="high">
+                                    <input type="radio" name="editTaskPriority" value="high">
+                                    <span class="priority-radio high">
+                                        <span class="priority-icon">🔴</span>
+                                        <span class="priority-text">Высокий</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
                         
                         <input type="datetime-local" id="editTaskDueDate" class="modal-input">
                     </div>
