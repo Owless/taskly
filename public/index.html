@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taskly - Управление задачами</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-color: #2196F3;
+            --primary-light: #E3F2FD;
+            --primary-dark: #1976D2;
+            --white: #FFFFFF;
+            --gray-50: #FAFAFA;
+            --gray-100: #F5F5F5;
+            --gray-200: #EEEEEE;
+            --gray-400: #BDBDBD;
+            --gray-600: #757575;
+            --gray-800: #424242;
+            --success: #4CAF50;
+            --warning: #FF9800;
+            --error: #F44336;
+            --shadow: 0 2px 8px rgba(0,0,0,0.1);
+            --border-radius: 12px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, var(--gray-50) 0%, var(--primary-light) 100%);
+            color: var(--gray-800);
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+
+        .header h1 {
+            color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .header .subtitle {
+            color: var(--gray-600);
+            font-size: 14px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 15px;
+            text-align: center;
+            box-shadow: var(--shadow);
+        }
+
+        .stat-number {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
+        .controls {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+        }
+
+        .add-task {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .task-input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .task-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
+        }
+
+        .add-btn {
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 24px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .add-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 5px;
+        }
+
+        .filter-btn {
+            background: var(--gray-100);
+            color: var(--gray-600);
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+
+        .filter-btn.active {
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .tasks-section {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .tasks-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tasks-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .tasks-count {
+            background: var(--primary-light);
+            color: var(--primary-color);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .tasks-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .task-item {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: all 0.2s;
+        }
+
+        .task-item:hover {
+            background: var(--gray-50);
+        }
+
+        .task-item:last-child {
+            border-bottom: none;
+        }
+
+        .task-checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-400);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            flex-shrink: 0;
+        }
+
+        .task-checkbox.completed {
+            background: var(--success);
+            border-color: var(--success);
+        }
+
+        .task-checkbox.completed::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--white);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .task-content {
+            flex: 1;
+        }
+
+        .task-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--gray-800);
+            margin-bottom: 2px;
+        }
+
+        .task-title.completed {
+            text-decoration: line-through;
+            color: var(--gray-400);
+        }
+
+        .task-meta {
+            font-size: 12px;
+            color: var(--gray-600);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .task-date {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .task-date.overdue {
+            color: var(--error);
+        }
+
+        .task-date.today {
+            color: var(--warning);
+        }
+
+        .priority-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--gray-400);
+        }
+
+        .priority-dot.high {
+            background: var(--error);
+        }
+
+        .priority-dot.medium {
+            background: var(--warning);
+        }
+
+        .priority-dot.low {
+            background: var(--success);
+        }
+
+        .empty-state {
+            padding: 40px 20px;
+            text-align: center;
+            color: var(--gray-600);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-title {
+            font-size: 16px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .empty-subtitle {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            background: var(--primary-color);
+            color: var(--white);
+            border: none;
+            border-radius: 50%;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .fab:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .header h1 {
+                font-size: 20px;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>📋 Taskly</h1>
+            <div class="subtitle">Простое управление задачами</div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="todayCount">0</div>
+                <div class="stat-label">Сегодня</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCount">0</div>
+                <div class="stat-label">Всего</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="completedCount">0</div>
+                <div class="stat-label">Выполнено</div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="controls">
+            <div class="add-task">
+                <input 
+                    type="text" 
+                    class="task-input" 
+                    placeholder="Добавить новую задачу..."
+                    maxlength="100"
+                    id="taskInput"
+                >
+                <button class="add-btn" id="addBtn">+</button>
+            </div>
+            
+            <div class="filters">
+                <button class="filter-btn active" data-filter="all">Все</button>
+                <button class="filter-btn" data-filter="today">Сегодня</button>
+                <button class="filter-btn" data-filter="tomorrow">Завтра</button>
+                <button class="filter-btn" data-filter="week">Неделя</button>
+                <button class="filter-btn" data-filter="overdue">Просрочено</button>
+                <button class="filter-btn" data-filter="no_date">Без даты</button>
+            </div>
+        </div>
+
+        <!-- Tasks -->
+        <div class="tasks-section">
+            <div class="tasks-header">
+                <div class="tasks-title">Задачи</div>
+                <div class="tasks-count" id="tasksCount">0</div>
+            </div>
+            <div class="tasks-list" id="tasksList">
+                <!-- Empty state -->
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-icon">📝</div>
+                    <div class="empty-title">Нет задач</div>
+                    <div class="empty-subtitle">Добавьте первую задачу чтобы начать</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Telegram Web App initialization
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+        }
+
+        // App state
+        let tasks = [];
+        let currentFilter = 'all';
+
+        // DOM elements
+        const taskInput = document.getElementById('taskInput');
+        const addBtn = document.getElementById('addBtn');
+        const tasksList = document.getElementById('tasksList');
+        const emptyState = document.getElementById('emptyState');
+        const filterBtns = document.querySelectorAll('.filter-btn');
+
+        // Initialize app
+        init();
+
+        function init() {
+            loadTasks();
+            setupEventListeners();
+            updateStats();
+            renderTasks();
+        }
+
+        function setupEventListeners() {
+            // Add task
+            addBtn.addEventListener('click', addTask);
+            taskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') addTask();
+            });
+
+            // Filters
+            filterBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    setActiveFilter(e.target.dataset.filter);
+                });
+            });
+        }
+
+        function loadTasks() {
+            // Load from localStorage (temporary solution)
+            const saved = localStorage.getItem('taskly_tasks');
+            if (saved) {
+                try {
+                    tasks = JSON.parse(saved);
+                } catch (e) {
+                    tasks = [];
+                }
+            }
+        }
+
+        function saveTasks() {
+            localStorage.setItem('taskly_tasks', JSON.stringify(tasks));
+        }
+
+        function addTask() {
+            const title = taskInput.value.trim();
+            if (!title) return;
+
+            const task = {
+                id: Date.now().toString(),
+                title: title,
+                completed: false,
+                created_at: new Date().toISOString(),
+                due_date: null,
+                priority: 'medium'
+            };
+
+            tasks.unshift(task);
+            taskInput.value = '';
+            
+            saveTasks();
+            updateStats();
+            renderTasks();
+            
+            // Add animation
+            taskInput.classList.add('pulse');
+            setTimeout(() => taskInput.classList.remove('pulse'), 300);
+        }
+
+        function toggleTask(taskId) {
+            const task = tasks.find(t => t.id === taskId);
+            if (task) {
+                task.completed = !task.completed;
+                task.completed_at = task.completed ? new Date().toISOString() : null;
+                
+                saveTasks();
+                updateStats();
+                renderTasks();
+            }
+        }
+
+        function setActiveFilter(filter) {
+            currentFilter = filter;
+            
+            // Update UI
+            filterBtns.forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.filter === filter);
+            });
+            
+            renderTasks();
+        }
+
+        function getFilteredTasks() {
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            const nextWeek = new Date(Date.now() + 7 * 86400000).toISOString().split('T')[0];
+
+            return tasks.filter(task => {
+                if (task.completed && currentFilter !== 'all') return false;
+                
+                switch (currentFilter) {
+                    case 'today':
+                        return task.due_date === today;
+                    case 'tomorrow':
+                        return task.due_date === tomorrow;
+                    case 'week':
+                        return task.due_date && task.due_date <= nextWeek;
+                    case 'overdue':
+                        return task.due_date && task.due_date < today;
+                    case 'no_date':
+                        return !task.due_date;
+                    default:
+                        return true;
+                }
+            });
+        }
+
+        function renderTasks() {
+            const filteredTasks = getFilteredTasks();
+            
+            if (filteredTasks.length === 0) {
+                tasksList.innerHTML = '<div class="empty-state"><div class="empty-icon">📝</div><div class="empty-title">Нет задач</div><div class="empty-subtitle">Добавьте первую задачу чтобы начать</div></div>';
+                document.getElementById('tasksCount').textContent = '0';
+                return;
+            }
+
+            document.getElementById('tasksCount').textContent = filteredTasks.length;
+
+            tasksList.innerHTML = filteredTasks.map(task => {
+                const taskDate = task.due_date ? new Date(task.due_date) : null;
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
+                let dateClass = '';
+                let dateText = '';
+                
+                if (taskDate) {
+                    const taskDateOnly = new Date(taskDate);
+                    taskDateOnly.setHours(0, 0, 0, 0);
+                    
+                    if (taskDateOnly < today) {
+                        dateClass = 'overdue';
+                        dateText = '⚠️ Просрочено';
+                    } else if (taskDateOnly.getTime() === today.getTime()) {
+                        dateClass = 'today';
+                        dateText = '📅 Сегодня';
+                    } else {
+                        dateText = `📅 ${taskDate.toLocaleDateString('ru-RU')}`;
+                    }
+                }
+
+                return `
+                    <div class="task-item slide-in">
+                        <div class="task-checkbox ${task.completed ? 'completed' : ''}" 
+                             onclick="toggleTask('${task.id}')"></div>
+                        <div class="task-content">
+                            <div class="task-title ${task.completed ? 'completed' : ''}">${task.title}</div>
+                            <div class="task-meta">
+                                ${dateText ? `<span class="task-date ${dateClass}">${dateText}</span>` : ''}
+                                <span class="priority-dot ${task.priority}"></span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayTasks = tasks.filter(t => t.due_date === today && !t.completed).length;
+            const totalTasks = tasks.filter(t => !t.completed).length;
+            const completedTasks = tasks.filter(t => t.completed).length;
+
+            document.getElementById('todayCount').textContent = todayTasks;
+            document.getElementById('totalCount').textContent = totalTasks;
+            document.getElementById('completedCount').textContent = completedTasks;
+        }
+
+        // Sample data for demonstration
+        if (tasks.length === 0) {
+            const today = new Date().toISOString().split('T')[0];
+            const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+            
+            tasks = [
+                {
+                    id: '1',
+                    title: 'Купить продукты',
+                    completed: false,
+                    created_at: new Date().toISOString(),
+                    due_date: today,
+                    priority: 'high'
+                },
+                {
+                    id: '2', 
+                    title: 'Сделать презентацию',
+                    completed: false,
+                    created_at: new Date().toISOString(),
+                    due_date: tomorrow,
+                    priority: 'medium'
+                },
+                {
+                    id: '3',
+                    title: 'Позвонить маме',
+                    completed: true,
+                    created_at: new Date().toISOString(),
+                    due_date: today,
+                    priority: 'low',
+                    completed_at: new Date().toISOString()
+                }
+            ];
+            
+            saveTasks();
+            updateStats();
+            renderTasks();
+        }
+    </script>
+</body>
+</html>
