@@ -19,7 +19,89 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 app.use(express.json());
 app.use(express.static('.'));
 
-// API для получения токена бота (для создания платежей)
+// API для создания инвойса (для платежей внутри приложения)
+app.post('/api/create-invoice', async (req, res) => {
+  try {
+    const { amount, payload, userId } = req.body;
+    
+    if (!amount || amount < 1 || amount > 2500) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Некорректная сумма' 
+      });
+    }
+
+    const invoiceParams = {
+      title: 'Поддержка Taskly',
+      description: `Поддержка разработки приложения Taskly`,
+      payload: payload,
+      provider_token: '', // Пустой для Telegram Stars
+      currency: 'XTR',
+      prices: JSON.stringify([{ 
+        label: `${amount} Stars`, 
+        amount: amount 
+      }]),
+      start_parameter: 'donation',
+      need_name: false,
+      need_phone_number: false,
+      need_email: false,
+      need_shipping_address: false,
+      send_phone_number_to_provider: false,
+      send_email_to_provider: false,
+      is_flexible: false
+    };
+
+    console.log('Creating invoice for:', amount, 'stars for user:', userId);
+
+    // Создаем invoice link через Telegram Bot API
+    const response = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/createInvoiceLink`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(invoiceParams)
+    });
+
+    const result = await response.json();
+    
+    if (!result.ok) {
+      console.error('Telegram API error:', result);
+      throw new Error(result.description || 'Ошибка создания инвойса');
+    }
+    
+    console.log('✅ Invoice created successfully');
+    
+    // Сохраняем информацию о платеже
+    try {
+      await supabaseAdmin
+        .from('pending_donations')
+        .insert({
+          telegram_id: userId,
+          amount: amount,
+          payload: payload,
+          status: 'pending',
+          created_at: new Date().toISOString()
+        });
+      
+      console.log('✅ Pending donation saved');
+    } catch (dbError) {
+      console.error('❌ Error saving pending donation:', dbError);
+      // Не останавливаем процесс, если не удалось сохранить в БД
+    }
+    
+    res.json({ 
+      success: true, 
+      invoiceLink: result.result 
+    });
+    
+  } catch (error) {
+    console.error('Create invoice error:', error);
+    res.status(400).json({ 
+      success: false, 
+      error: error.message || 'Ошибка создания платежа' 
+    });
+  }
+});
+
+// API для получения токена бота (если нужно для других целей)
 app.get('/api/bot-token', (req, res) => {
   res.json({ token: process.env.TELEGRAM_BOT_TOKEN });
 });
@@ -129,14 +211,46 @@ bot.onText(/\/help/, async (msg) => {
   }
 });
 
+// Обработка callback кнопок
+bot.on('callback_query', async (callbackQuery) => {
+  const message = callbackQuery.message;
+  const data = callbackQuery.data;
+  
+  if (data === 'help') {
+    // Показываем справку
+    bot.answerCallbackQuery(callbackQuery.id);
+    
+    const helpMessage = `📖 *Справка по Taskly*
+
+🎯 *Основные функции:*
+- ✅ Создание задач с описанием
+- 🎨 Установка приоритетов
+- ⏰ Установка сроков выполнения
+- 🔄 Отметка выполненных задач
+- 📊 Группировка по времени
+
+🔧 *Управление:*
+- Нажми на чекбокс чтобы отметить выполненную
+- Используй фильтры: Активные/Все/Архив
+- Нажми на задачу для редактирования`;
+
+    try {
+      await bot.sendMessage(message.chat.id, helpMessage, { parse_mode: 'Markdown' });
+    } catch (error) {
+      console.error('Help callback error:', error);
+    }
+  }
+});
+
 // Обработка успешных платежей
 bot.on('successful_payment', async (msg) => {
   const { successful_payment } = msg;
   const chatId = msg.chat.id;
   const amount = successful_payment.total_amount;
   const firstName = msg.from.first_name || 'Друг';
+  const payload = successful_payment.invoice_payload;
 
-  console.log(`✅ Successful payment: ${amount} stars from user ${chatId}`);
+  console.log(`✅ Successful payment: ${amount} stars from user ${chatId}, payload: ${payload}`);
 
   // Логируем платеж в Supabase
   try {
@@ -148,13 +262,24 @@ bot.on('successful_payment', async (msg) => {
         first_name: msg.from.first_name,
         amount: amount,
         currency: 'XTR',
-        payload: successful_payment.invoice_payload,
+        payload: payload,
         telegram_payment_charge_id: successful_payment.telegram_payment_charge_id,
         provider_payment_charge_id: successful_payment.provider_payment_charge_id,
-        status: 'completed'
+        status: 'completed',
+        completed_at: new Date().toISOString()
       });
     
     console.log('✅ Donation logged to database');
+    
+    // Обновляем статус pending donation
+    await supabaseAdmin
+      .from('pending_donations')
+      .update({ 
+        status: 'completed',
+        completed_at: new Date().toISOString()
+      })
+      .eq('payload', payload);
+      
   } catch (error) {
     console.error('❌ Error saving donation:', error);
   }
@@ -185,6 +310,22 @@ ${firstName}, ты потрясающий! Твое пожертвование �
     });
   } catch (error) {
     console.error('Error sending thank you message:', error);
+  }
+});
+
+// Обработка предварительных запросов платежей (pre_checkout_query)
+bot.on('pre_checkout_query', async (preCheckoutQuery) => {
+  console.log('Pre-checkout query received:', preCheckoutQuery);
+  
+  try {
+    // Всегда подтверждаем платеж (можно добавить дополнительные проверки)
+    await bot.answerPreCheckoutQuery(preCheckoutQuery.id, true);
+    console.log('✅ Pre-checkout query approved');
+  } catch (error) {
+    console.error('❌ Error answering pre-checkout query:', error);
+    await bot.answerPreCheckoutQuery(preCheckoutQuery.id, false, {
+      error_message: 'Ошибка обработки платежа. Попробуйте еще раз.'
+    });
   }
 });
 
