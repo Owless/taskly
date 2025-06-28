@@ -293,12 +293,11 @@ body {
     100% { transform: rotate(360deg); }
 }
 
-/* Заголовок */
 /* Заголовок - ОЧЕНЬ КОМПАКТНАЯ ВЕРСИЯ */
 .header {
     background: var(--gradient-surface);
     border-bottom: 1px solid var(--border);
-    padding: 8px var(--spacing); /* Очень маленький padding для минимальной высоты */
+    padding: 8px var(--spacing);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -312,14 +311,14 @@ body {
     justify-content: space-between;
     max-width: 600px;
     margin: 0 auto;
-    height: 40px; /* Фиксированная маленькая высота */
+    height: 40px;
 }
 
-/* МАКСИМАЛЬНО КОМПАКТНАЯ BRAND SECTION */
+/* BRAND SECTION - логотип и название очень близко */
 .brand-section {
     display: flex;
     align-items: center;
-    gap: 0px; /* Минимальный отступ */
+    gap: 4px !important; /* Очень маленький отступ */
     flex: 1;
     height: 100%;
 }
@@ -329,18 +328,18 @@ body {
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    margin: 0;
-    padding: 0;
-    margin-right: 4px;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .logo-image {
-    height: 24px; /* Компактный логотип */
+    height: 24px;
     width: auto;
     object-fit: contain;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     display: block;
+    vertical-align: top;
 }
 
 .logo-fallback {
@@ -355,8 +354,8 @@ body {
     background: var(--surface);
     border-radius: 50%;
     border: 2px solid var(--primary);
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .app-title {
@@ -366,10 +365,10 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    margin: 0;
-    padding: 0;
+    margin: 0 !important;
+    padding: 0 !important;
     line-height: 1;
-    display: block; /* Убираем inline отступы */
+    display: block;
 }
 
 .header-actions {
@@ -409,7 +408,7 @@ body {
 .header-stats {
     text-align: center;
     background: var(--surface);
-    padding: 4px 8px; /* Минимальный padding */
+    padding: 4px 8px;
     border-radius: 8px;
     border: 1px solid var(--border);
     box-shadow: 0 2px 8px var(--shadow);
@@ -435,15 +434,15 @@ body {
 /* Адаптивность для мобильных */
 @media (max-width: 480px) {
     .header {
-        padding: 6px var(--spacing-small); /* Еще меньше на мобильных */
+        padding: 6px var(--spacing-small);
     }
     
     .header-content {
-        height: 36px; /* Еще ниже на мобильных */
+        height: 36px;
     }
     
     .brand-section {
-        gap: 1px; /* Практически без отступа */
+        gap: 2px !important; /* Еще меньше на мобильных */
     }
     
     .app-title {
@@ -488,19 +487,10 @@ body {
     }
 }
 
-/* Убираем любые лишние отступы которые могут влиять на расстояние */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-/* Убедимся что нет лишних стилей применяющихся к логотипу или названию */
-.brand-section * {
-    margin: 0 !important;
-    padding: 0 !important;
-}
-
+/* Убираем все возможные отступы */
+.brand-section,
+.brand-section *,
+.app-logo,
 .app-logo * {
     margin: 0 !important;
     padding: 0 !important;
