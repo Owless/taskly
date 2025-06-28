@@ -6,7 +6,7 @@
 }
 
 :root {
-    /* Основная цветовая палитра - голубо-белая */
+    /* Светлая тема - бело-голубая */
     --primary: #007AFF;
     --primary-light: #4DA3FF;
     --primary-dark: #0056CC;
@@ -15,43 +15,35 @@
     --warning: #FF9500;
     --danger: #FF3B30;
     
-    /* Светлая тема */
-    --background: #F2F7FF;
+    --background: #F8FBFF;
     --surface: #FFFFFF;
-    --surface-secondary: #F8FBFF;
+    --surface-secondary: #F0F8FF;
     --surface-elevated: #FFFFFF;
-    --surface-glass: rgba(255, 255, 255, 0.8);
     --text-primary: #1D1D1F;
     --text-secondary: #6D6D80;
     --text-tertiary: #8E8E93;
     --border: #E3F2FD;
     --border-light: #F0F8FF;
-    --shadow: rgba(0, 122, 255, 0.08);
-    --shadow-elevated: rgba(0, 122, 255, 0.12);
-    --shadow-strong: rgba(0, 122, 255, 0.2);
+    --shadow: rgba(0, 122, 255, 0.1);
+    --shadow-elevated: rgba(0, 122, 255, 0.15);
     
     /* Цвета приоритетов */
     --priority-low: #34C759;
     --priority-low-bg: rgba(52, 199, 89, 0.1);
-    --priority-low-border: rgba(52, 199, 89, 0.2);
     --priority-medium: #FF9500;
     --priority-medium-bg: rgba(255, 149, 0, 0.1);
-    --priority-medium-border: rgba(255, 149, 0, 0.2);
     --priority-high: #FF3B30;
     --priority-high-bg: rgba(255, 59, 48, 0.1);
-    --priority-high-border: rgba(255, 59, 48, 0.2);
     
     /* Градиенты */
     --gradient-primary: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
-    --gradient-surface: linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 100%);
+    --gradient-surface: linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%);
     --gradient-support: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
     
     /* Размеры */
     --radius: 16px;
     --radius-small: 12px;
     --radius-large: 20px;
-    --radius-xl: 24px;
     --spacing: 16px;
     --spacing-small: 12px;
     --spacing-large: 24px;
@@ -63,15 +55,22 @@
     --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* Темная тема */
+/* Темная тема - бело-темно-синяя */
 .dark-theme,
 @media (prefers-color-scheme: dark) {
     :root {
+        --primary: #0A84FF;
+        --primary-light: #409CFF;
+        --primary-dark: #0056CC;
+        --secondary: #5AC8FA;
+        --accent: #30D158;
+        --warning: #FF9F0A;
+        --danger: #FF453A;
+        
         --background: #000000;
         --surface: #1C1C1E;
         --surface-secondary: #2C2C2E;
-        --surface-elevated: #2C2C2E;
-        --surface-glass: rgba(28, 28, 30, 0.8);
+        --surface-elevated: #3A3A3C;
         --text-primary: #FFFFFF;
         --text-secondary: #8E8E93;
         --text-tertiary: #636366;
@@ -79,22 +78,18 @@
         --border-light: #48484A;
         --shadow: rgba(0, 0, 0, 0.3);
         --shadow-elevated: rgba(0, 0, 0, 0.5);
-        --shadow-strong: rgba(0, 0, 0, 0.7);
         
         /* Темные цвета приоритетов */
         --priority-low: #30D158;
         --priority-low-bg: rgba(48, 209, 88, 0.15);
-        --priority-low-border: rgba(48, 209, 88, 0.3);
         --priority-medium: #FF9F0A;
         --priority-medium-bg: rgba(255, 159, 10, 0.15);
-        --priority-medium-border: rgba(255, 159, 10, 0.3);
         --priority-high: #FF453A;
         --priority-high-bg: rgba(255, 69, 58, 0.15);
-        --priority-high-border: rgba(255, 69, 58, 0.3);
         
+        --gradient-primary: linear-gradient(135deg, #0A84FF 0%, #5AC8FA 100%);
         --gradient-surface: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
         --gradient-support: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%);
-        --gradient-glass: linear-gradient(135deg, rgba(28, 28, 30, 0.9) 0%, rgba(44, 44, 46, 0.8) 100%);
     }
 }
 
@@ -146,7 +141,6 @@
     border-radius: var(--radius);
     padding: var(--spacing);
     border: 1px solid var(--border);
-    backdrop-filter: blur(20px);
 }
 
 .step {
@@ -228,7 +222,7 @@ body {
 
 /* Заголовок */
 .header {
-    background: var(--gradient-glass);
+    background: var(--gradient-surface);
     border-bottom: 1px solid var(--border);
     padding: var(--spacing-xl) var(--spacing) var(--spacing-large);
     position: sticky;
@@ -236,7 +230,6 @@ body {
     z-index: 100;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 1px 0 var(--border);
 }
 
 .header-content {
@@ -268,17 +261,37 @@ body {
 .app-title {
     font-size: 28px;
     font-weight: 800;
-    margin-bottom: 4px;
     background: var(--gradient-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
 
-.user-greeting {
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+}
+
+.settings-btn {
+    width: 40px;
+    height: 40px;
+    border: none;
+    background: var(--surface-secondary);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     color: var(--text-secondary);
-    font-size: 15px;
-    font-weight: 500;
+    transition: var(--transition);
+    border: 1px solid var(--border);
+}
+
+.settings-btn:hover {
+    background: var(--surface);
+    color: var(--primary);
+    transform: scale(1.05);
 }
 
 .header-stats {
@@ -288,7 +301,6 @@ body {
     border-radius: var(--radius-small);
     border: 1px solid var(--border);
     box-shadow: 0 2px 8px var(--shadow);
-    backdrop-filter: blur(10px);
 }
 
 .stat-number {
@@ -315,13 +327,11 @@ body {
 }
 
 .quick-add-form {
-    background: var(--gradient-glass);
-    border-radius: var(--radius-xl);
+    background: var(--surface);
+    border-radius: var(--radius-large);
     padding: var(--spacing-large);
     box-shadow: 0 8px 32px var(--shadow-elevated);
     border: 1px solid var(--border);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
 }
 
 .input-group {
@@ -345,7 +355,7 @@ body {
 
 .task-input:focus {
     outline: none;
-    background: var(--surface);
+    background: var(--surface-elevated);
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
     transform: translateY(-1px);
@@ -422,7 +432,7 @@ body {
 
 .description-input:focus {
     outline: none;
-    background: var(--surface);
+    background: var(--surface-elevated);
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
@@ -430,13 +440,12 @@ body {
 .options-row {
     display: flex;
     gap: var(--spacing);
-    align-items: flex-start;
+    align-items: center;
 }
 
-/* Современные радио-кнопки приоритетов */
+/* Компактные чекбоксы приоритетов */
 .priority-selector {
-    flex: 1;
-    min-width: 0;
+    flex-shrink: 0;
 }
 
 .priority-label {
@@ -447,105 +456,57 @@ body {
     margin-bottom: var(--spacing-small);
 }
 
-.priority-options {
+.priority-options.compact {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
 }
 
 .priority-option {
     cursor: pointer;
-    flex: 1;
-    min-width: 0;
 }
 
 .priority-option input[type="radio"] {
     display: none;
 }
 
-.priority-radio {
+.priority-checkbox {
     display: flex;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    border-radius: var(--radius);
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     background: var(--surface-secondary);
     border: 2px solid transparent;
     transition: var(--transition);
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 18px;
     position: relative;
-    overflow: hidden;
-    backdrop-filter: blur(10px);
 }
 
-.priority-option input[type="radio"]:checked + .priority-radio.low {
+.priority-option input[type="radio"]:checked + .priority-checkbox.low {
     background: var(--priority-low-bg);
-    border-color: var(--priority-low-border);
-    color: var(--priority-low);
-    box-shadow: 0 4px 12px rgba(52, 199, 89, 0.2);
+    border-color: var(--priority-low);
+    box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3);
+    transform: scale(1.1);
 }
 
-.priority-option input[type="radio"]:checked + .priority-radio.medium {
+.priority-option input[type="radio"]:checked + .priority-checkbox.medium {
     background: var(--priority-medium-bg);
-    border-color: var(--priority-medium-border);
-    color: var(--priority-medium);
-    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.2);
+    border-color: var(--priority-medium);
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.3);
+    transform: scale(1.1);
 }
 
-.priority-option input[type="radio"]:checked + .priority-radio.high {
+.priority-option input[type="radio"]:checked + .priority-checkbox.high {
     background: var(--priority-high-bg);
-    border-color: var(--priority-high-border);
-    color: var(--priority-high);
-    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.2);
+    border-color: var(--priority-high);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.3);
+    transform: scale(1.1);
 }
 
-.priority-radio:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px var(--shadow);
-}
-
-.priority-option input[type="radio"]:checked + .priority-radio {
-    transform: translateY(-2px) scale(1.02);
-}
-
-.priority-icon {
-    font-size: 16px;
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
-}
-
-.priority-text {
-    font-weight: 600;
-    flex: 1;
-    text-align: center;
-}
-
-/* Адаптация для мобильных */
-@media (max-width: 480px) {
-    .priority-options {
-        flex-direction: column;
-        gap: 6px;
-    }
-    
-    .priority-radio {
-        justify-content: center;
-        padding: 10px 12px;
-    }
-    
-    .priority-text {
-        text-align: center;
-    }
-}
-
-/* Модальная версия приоритетов */
-.modal-priority .priority-options {
-    flex-direction: column;
-    gap: 8px;
-}
-
-.modal-priority .priority-radio {
-    justify-content: flex-start;
-    padding: 14px 16px;
+.priority-checkbox:hover {
+    transform: scale(1.05);
+    background: var(--surface-elevated);
 }
 
 .date-input {
@@ -560,14 +521,13 @@ body {
     border: 2px solid transparent;
     transition: var(--transition);
     font-weight: 500;
-    backdrop-filter: blur(10px);
 }
 
 .date-input:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
-    background: var(--surface);
+    background: var(--surface-elevated);
 }
 
 .toggle-options {
@@ -616,7 +576,6 @@ body {
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: 0 4px 16px var(--shadow);
-    backdrop-filter: blur(10px);
 }
 
 .filter-btn {
@@ -666,17 +625,15 @@ body {
 }
 
 .task-item {
-    background: var(--gradient-glass);
+    background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-large);
     padding: var(--spacing-large);
     transition: var(--transition);
     cursor: pointer;
     position: relative;
     overflow: hidden;
     box-shadow: 0 2px 12px var(--shadow);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
 }
 
 .task-item:hover {
@@ -718,7 +675,6 @@ body {
     position: relative;
     background: var(--surface);
     order: 2;
-    backdrop-filter: blur(10px);
 }
 
 .task-checkbox:hover {
@@ -776,25 +732,24 @@ body {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    backdrop-filter: blur(10px);
 }
 
 .priority.high {
     background: var(--priority-high-bg);
     color: var(--priority-high);
-    border: 1px solid var(--priority-high-border);
+    border: 1px solid var(--priority-high);
 }
 
 .priority.medium {
     background: var(--priority-medium-bg);
     color: var(--priority-medium);
-    border: 1px solid var(--priority-medium-border);
+    border: 1px solid var(--priority-medium);
 }
 
 .priority.low {
     background: var(--priority-low-bg);
     color: var(--priority-low);
-    border: 1px solid var(--priority-low-border);
+    border: 1px solid var(--priority-low);
 }
 
 .task-due-date {
@@ -805,7 +760,6 @@ body {
     padding: 4px 8px;
     border-radius: var(--radius-small);
     background: var(--surface-secondary);
-    backdrop-filter: blur(10px);
 }
 
 /* Группы задач */
@@ -879,13 +833,11 @@ body {
 
 .support-card {
     background: var(--gradient-support);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-large);
     padding: var(--spacing-xl);
     position: relative;
     overflow: hidden;
     border: 1px solid var(--border);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
 }
 
 .support-header {
@@ -943,7 +895,14 @@ body {
     font-weight: 600;
     color: var(--text-primary);
     transition: var(--transition);
-    backdrop-filter: blur(10px);
+    /* Убираем стрелочки */
+    -moz-appearance: textfield;
+}
+
+.amount-input::-webkit-outer-spin-button,
+.amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
 
 .amount-input:focus {
@@ -1035,17 +994,15 @@ body {
 }
 
 .modal-content {
-    background: var(--gradient-glass);
-    border-radius: var(--radius-xl);
+    background: var(--surface);
+    border-radius: var(--radius-large);
     width: 100%;
     max-width: 420px;
     max-height: 90vh;
     overflow: hidden;
     animation: modalSlideIn 0.4s var(--spring);
     border: 1px solid var(--border);
-    box-shadow: 0 20px 60px var(--shadow-strong);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 20px 60px var(--shadow-elevated);
 }
 
 @keyframes modalSlideIn {
@@ -1065,8 +1022,7 @@ body {
     justify-content: space-between;
     padding: var(--spacing-large);
     border-bottom: 1px solid var(--border);
-    background: var(--surface-glass);
-    backdrop-filter: blur(10px);
+    background: var(--surface-secondary);
 }
 
 .modal-header h3 {
@@ -1087,7 +1043,6 @@ body {
     justify-content: center;
     color: var(--text-secondary);
     transition: var(--transition);
-    backdrop-filter: blur(10px);
 }
 
 .close-btn:hover {
@@ -1113,14 +1068,13 @@ body {
     font-family: inherit;
     transition: var(--transition);
     font-weight: 500;
-    backdrop-filter: blur(10px);
 }
 
 .modal-input:focus,
 .modal-textarea:focus {
     outline: none;
     border-color: var(--primary);
-    background: var(--surface);
+    background: var(--surface-elevated);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
 }
 
@@ -1140,8 +1094,7 @@ body {
     gap: var(--spacing);
     padding: var(--spacing-large);
     border-top: 1px solid var(--border);
-    background: var(--surface-glass);
-    backdrop-filter: blur(10px);
+    background: var(--surface-secondary);
 }
 
 .delete-btn-modal {
@@ -1155,7 +1108,6 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
-    backdrop-filter: blur(10px);
 }
 
 .delete-btn-modal:hover {
@@ -1184,6 +1136,90 @@ body {
     box-shadow: 0 8px 24px rgba(0, 122, 255, 0.4);
 }
 
+.save-btn.full-width {
+    flex: none;
+    width: 100%;
+}
+
+/* Настройки */
+.settings-section {
+    margin-bottom: var(--spacing-large);
+}
+
+.settings-section h4 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing);
+}
+
+.settings-select {
+    width: 100%;
+    border: 2px solid var(--border);
+    background: var(--surface-secondary);
+    padding: 16px 20px;
+    border-radius: var(--radius);
+    font-size: 16px;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 500;
+}
+
+.settings-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+}
+
+.settings-toggle {
+    margin-bottom: var(--spacing);
+}
+
+.toggle-label {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing);
+    cursor: pointer;
+    font-size: 16px;
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.toggle-label input[type="checkbox"] {
+    display: none;
+}
+
+.toggle-slider {
+    width: 48px;
+    height: 28px;
+    border-radius: 14px;
+    background: var(--border);
+    position: relative;
+    transition: var(--transition);
+}
+
+.toggle-slider::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: white;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.toggle-label input[type="checkbox"]:checked + .toggle-slider {
+    background: var(--primary);
+}
+
+.toggle-label input[type="checkbox"]:checked + .toggle-slider::before {
+    transform: translateX(20px);
+}
+
 /* Уведомления */
 .notifications {
     position: fixed;
@@ -1194,15 +1230,13 @@ body {
 }
 
 .notification {
-    background: var(--gradient-glass);
+    background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: var(--spacing);
     margin-bottom: var(--spacing-small);
     box-shadow: 0 8px 32px var(--shadow-elevated);
     animation: notificationSlideIn 0.4s var(--spring);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
     color: var(--text-primary);
     font-weight: 500;
 }
@@ -1243,6 +1277,11 @@ body {
     .options-row {
         flex-direction: column;
         gap: var(--spacing);
+        align-items: stretch;
+    }
+    
+    .priority-options.compact {
+        justify-content: center;
     }
     
     .support-form {
@@ -1303,7 +1342,8 @@ body {
 /* Улучшенные focus состояния */
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible {
+textarea:focus-visible,
+select:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
@@ -1336,41 +1376,4 @@ textarea:focus-visible {
 
 .support-card {
     animation-delay: 0.3s;
-}
-
-/* Эффекты glassmorphism для темной темы */
-.dark-theme .task-item,
-.dark-theme .quick-add-form,
-.dark-theme .modal-content,
-.dark-theme .support-card {
-    background: rgba(28, 28, 30, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark-theme .header {
-    background: rgba(0, 0, 0, 0.8);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.dark-theme .filters {
-    background: rgba(28, 28, 30, 0.8);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Специальные эффекты для приоритетов в темной теме */
-.dark-theme .priority-option input[type="radio"]:checked + .priority-radio {
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
-}
-
-/* Улучшенные тени для темной темы */
-.dark-theme .task-item:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
-}
-
-.dark-theme .modal-content {
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
-}
-
-.dark-theme .notification {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
 }
