@@ -308,36 +308,44 @@ body {
 .header-content {
     display: flex;
     align-items: center;
-    gap: var(--spacing);
+    justify-content: space-between;
     max-width: 600px;
     margin: 0 auto;
 }
 
-.user-avatar {
-    width: 52px;
-    height: 52px;
-    border-radius: 50%;
-    background: var(--gradient-primary);
+/* НОВЫЕ СТИЛИ ДЛЯ BRAND SECTION */
+.brand-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+.app-logo {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 700;
-    color: white;
-    font-size: 20px;
-    box-shadow: 0 4px 12px var(--shadow);
-    position: relative;
-    overflow: hidden;
+    flex-shrink: 0;
 }
 
 .logo-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    border-radius: 50%;
+    height: 36px;
+    width: auto;
+    object-fit: contain;
 }
 
-.user-info {
-    flex: 1;
+.logo-fallback {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--primary);
+    background: var(--surface);
+    border-radius: 50%;
+    border: 2px solid var(--primary);
 }
 
 .app-title {
@@ -347,6 +355,17 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    margin: 0;
+    line-height: 1;
+}
+
+/* УБИРАЕМ СТАРЫЕ СТИЛИ user-avatar и user-info */
+.user-avatar {
+    display: none !important;
+}
+
+.user-info {
+    display: none !important;
 }
 
 .header-actions {
@@ -1368,6 +1387,24 @@ body {
 @media (max-width: 480px) {
     .header {
         padding: var(--spacing-large) var(--spacing-small) var(--spacing);
+    }
+    
+    .brand-section {
+        gap: 8px;
+    }
+    
+    .app-title {
+        font-size: 24px;
+    }
+    
+    .logo-image {
+        height: 32px;
+    }
+    
+    .logo-fallback {
+        width: 32px;
+        height: 32px;
+        font-size: 18px;
     }
     
     .quick-add,
