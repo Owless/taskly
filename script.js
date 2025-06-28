@@ -301,7 +301,7 @@ class TasklyApp {
         this.updateCurrentTime();
     }
 
-    updateCurrentTime() {
+ updateCurrentTime() {
         const timezone = this.getUserTimezone();
         const now = new Date();
         
