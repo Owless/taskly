@@ -238,17 +238,50 @@ async function createInvoice(chatId, amount, description) {
   try {
     const invoice = {
       chat_id: chatId,
-      title: 'Поддержка Taskly',
+      title: 'Поддержка Taskly', // Обязательное поле
       description: description,
       payload: `donation_${chatId}_${Date.now()}`,
       currency: 'XTR', // Telegram Stars
-      prices: [{ label: 'Поддержка', amount: amount }]
+      prices: [{ 
+        label: `${amount} Stars`, 
+        amount: amount 
+      }],
+      // Дополнительные параметры для Stars
+      max_tip_amount: 0,
+      suggested_tip_amounts: [],
+      provider_token: '', // Пустой для Telegram Stars
+      start_parameter: 'taskly_donation',
+      provider_data: JSON.stringify({
+        receipt: {
+          items: [{
+            description: description,
+            quantity: '1',
+            amount: {
+              value: amount,
+              currency: 'XTR'
+            }
+          }]
+        }
+      })
     };
 
     await bot.sendInvoice(invoice);
+    
+    console.log(`Invoice created for ${amount} stars to user ${chatId}`);
+    
   } catch (error) {
     console.error('Ошибка создания инвойса:', error);
-    await bot.sendMessage(chatId, '❌ Ошибка при создании платежа. Попробуй позже.');
+    
+    // Более детальная обработка ошибок
+    let errorMessage = '❌ Ошибка при создании платежа.';
+    
+    if (error.code === 400) {
+      errorMessage = '❌ Некорректные параметры платежа. Попробуй другую сумму.';
+    } else if (error.code === 401) {
+      errorMessage = '❌ Проблема с авторизацией бота. Обратись к администратору.';
+    }
+    
+    await bot.sendMessage(chatId, errorMessage);
   }
 }
 
