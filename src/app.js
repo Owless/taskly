@@ -9,8 +9,8 @@ const logger = require('./utils/logger');
 const database = require('./config/database');
 const telegramConfig = require('./config/telegram');
 
-// Middleware
-const errorHandler = require('./middleware/errorHandler');
+// Middleware - Исправленный импорт с деструктуризацией
+const { errorHandler } = require('./middleware/errorHandler');
 const rateLimit = require('./middleware/rateLimit');
 
 // Routes
@@ -109,6 +109,7 @@ class App {
   }
 
   setupErrorHandling() {
+    // Теперь errorHandler - это функция, а не объект
     this.app.use(errorHandler);
   }
 
