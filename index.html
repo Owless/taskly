@@ -24,7 +24,7 @@
             <div class="access-steps">
                 <div class="step">
                     <span class="step-number">1</span>
-                    <span>Найдите бота @TasklyBot в Telegram</span>
+                    <span>Найдите бота @Tasklyclub_bot в Telegram</span>
                 </div>
                 <div class="step">
                     <span class="step-number">2</span>
@@ -267,13 +267,34 @@
                     <div class="settings-section">
                         <h4>Часовой пояс</h4>
                         <select id="timezoneSelect" class="settings-select">
-                            <option value="auto">Автоматически</option>
-                            <option value="Europe/Moscow">Москва (UTC+3)</option>
-                            <option value="Europe/Kiev">Киев (UTC+2)</option>
-                            <option value="Europe/Minsk">Минск (UTC+3)</option>
-                            <option value="Asia/Almaty">Алматы (UTC+6)</option>
-                            <option value="Asia/Tashkent">Ташкент (UTC+5)</option>
+                            <option value="auto">🌍 Автоматически</option>
+                            <optgroup label="🇷🇺 Россия">
+                                <option value="Europe/Kaliningrad">Калининград (UTC+2)</option>
+                                <option value="Europe/Moscow">Москва (UTC+3)</option>
+                                <option value="Europe/Samara">Самара (UTC+4)</option>
+                                <option value="Asia/Yekaterinburg">Екатеринбург (UTC+5)</option>
+                                <option value="Asia/Omsk">Омск (UTC+6)</option>
+                                <option value="Asia/Krasnoyarsk">Красноярск (UTC+7)</option>
+                                <option value="Asia/Irkutsk">Иркутск (UTC+8)</option>
+                                <option value="Asia/Chita">Чита (UTC+9)</option>
+                                <option value="Asia/Vladivostok">Владивосток (UTC+10)</option>
+                                <option value="Asia/Magadan">Магадан (UTC+11)</option>
+                                <option value="Asia/Kamchatka">Камчатка (UTC+12)</option>
+                            </optgroup>
+                            <optgroup label="🌏 СНГ">
+                                <option value="Europe/Minsk">Минск (UTC+3)</option>
+                                <option value="Asia/Almaty">Алматы (UTC+6)</option>
+                                <option value="Asia/Tashkent">Ташкент (UTC+5)</option>
+                                <option value="Asia/Baku">Баку (UTC+4)</option>
+                                <option value="Asia/Yerevan">Ереван (UTC+4)</option>
+                                <option value="Europe/Chisinau">Кишинев (UTC+2)</option>
+                                <option value="Asia/Bishkek">Бишкек (UTC+6)</option>
+                                <option value="Asia/Dushanbe">Душанбе (UTC+5)</option>
+                            </optgroup>
                         </select>
+                        <div class="timezone-info">
+                            <span id="currentTime" class="current-time"></span>
+                        </div>
                     </div>
                     
                     <div class="settings-section">
