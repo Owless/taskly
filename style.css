@@ -20,6 +20,7 @@
     --surface: #FFFFFF;
     --surface-secondary: #F8FBFF;
     --surface-elevated: #FFFFFF;
+    --surface-glass: rgba(255, 255, 255, 0.8);
     --text-primary: #1D1D1F;
     --text-secondary: #6D6D80;
     --text-tertiary: #8E8E93;
@@ -27,16 +28,30 @@
     --border-light: #F0F8FF;
     --shadow: rgba(0, 122, 255, 0.08);
     --shadow-elevated: rgba(0, 122, 255, 0.12);
+    --shadow-strong: rgba(0, 122, 255, 0.2);
+    
+    /* Цвета приоритетов */
+    --priority-low: #34C759;
+    --priority-low-bg: rgba(52, 199, 89, 0.1);
+    --priority-low-border: rgba(52, 199, 89, 0.2);
+    --priority-medium: #FF9500;
+    --priority-medium-bg: rgba(255, 149, 0, 0.1);
+    --priority-medium-border: rgba(255, 149, 0, 0.2);
+    --priority-high: #FF3B30;
+    --priority-high-bg: rgba(255, 59, 48, 0.1);
+    --priority-high-border: rgba(255, 59, 48, 0.2);
     
     /* Градиенты */
     --gradient-primary: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%);
     --gradient-surface: linear-gradient(135deg, #F8FBFF 0%, #FFFFFF 100%);
     --gradient-support: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.6) 100%);
     
     /* Размеры */
     --radius: 16px;
     --radius-small: 12px;
     --radius-large: 20px;
+    --radius-xl: 24px;
     --spacing: 16px;
     --spacing-small: 12px;
     --spacing-large: 24px;
@@ -49,12 +64,14 @@
 }
 
 /* Темная тема */
+.dark-theme,
 @media (prefers-color-scheme: dark) {
     :root {
         --background: #000000;
         --surface: #1C1C1E;
         --surface-secondary: #2C2C2E;
         --surface-elevated: #2C2C2E;
+        --surface-glass: rgba(28, 28, 30, 0.8);
         --text-primary: #FFFFFF;
         --text-secondary: #8E8E93;
         --text-tertiary: #636366;
@@ -62,8 +79,22 @@
         --border-light: #48484A;
         --shadow: rgba(0, 0, 0, 0.3);
         --shadow-elevated: rgba(0, 0, 0, 0.5);
+        --shadow-strong: rgba(0, 0, 0, 0.7);
+        
+        /* Темные цвета приоритетов */
+        --priority-low: #30D158;
+        --priority-low-bg: rgba(48, 209, 88, 0.15);
+        --priority-low-border: rgba(48, 209, 88, 0.3);
+        --priority-medium: #FF9F0A;
+        --priority-medium-bg: rgba(255, 159, 10, 0.15);
+        --priority-medium-border: rgba(255, 159, 10, 0.3);
+        --priority-high: #FF453A;
+        --priority-high-bg: rgba(255, 69, 58, 0.15);
+        --priority-high-border: rgba(255, 69, 58, 0.3);
+        
         --gradient-surface: linear-gradient(135deg, #1C1C1E 0%, #2C2C2E 100%);
         --gradient-support: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%);
+        --gradient-glass: linear-gradient(135deg, rgba(28, 28, 30, 0.9) 0%, rgba(44, 44, 46, 0.8) 100%);
     }
 }
 
@@ -115,6 +146,7 @@
     border-radius: var(--radius);
     padding: var(--spacing);
     border: 1px solid var(--border);
+    backdrop-filter: blur(20px);
 }
 
 .step {
@@ -153,6 +185,7 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    transition: var(--transition);
 }
 
 .app {
@@ -195,7 +228,7 @@ body {
 
 /* Заголовок */
 .header {
-    background: var(--gradient-surface);
+    background: var(--gradient-glass);
     border-bottom: 1px solid var(--border);
     padding: var(--spacing-xl) var(--spacing) var(--spacing-large);
     position: sticky;
@@ -255,6 +288,7 @@ body {
     border-radius: var(--radius-small);
     border: 1px solid var(--border);
     box-shadow: 0 2px 8px var(--shadow);
+    backdrop-filter: blur(10px);
 }
 
 .stat-number {
@@ -281,12 +315,13 @@ body {
 }
 
 .quick-add-form {
-    background: var(--surface-elevated);
-    border-radius: var(--radius-large);
+    background: var(--gradient-glass);
+    border-radius: var(--radius-xl);
     padding: var(--spacing-large);
     box-shadow: 0 8px 32px var(--shadow-elevated);
     border: 1px solid var(--border);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 .input-group {
@@ -366,7 +401,7 @@ body {
     to {
         opacity: 1;
         transform: translateY(0);
-        max-height: 200px;
+        max-height: 300px;
     }
 }
 
@@ -395,9 +430,124 @@ body {
 .options-row {
     display: flex;
     gap: var(--spacing);
+    align-items: flex-start;
 }
 
-.priority-select,
+/* Современные радио-кнопки приоритетов */
+.priority-selector {
+    flex: 1;
+    min-width: 0;
+}
+
+.priority-label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-small);
+}
+
+.priority-options {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.priority-option {
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+}
+
+.priority-option input[type="radio"] {
+    display: none;
+}
+
+.priority-radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    background: var(--surface-secondary);
+    border: 2px solid transparent;
+    transition: var(--transition);
+    font-size: 14px;
+    font-weight: 500;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+}
+
+.priority-option input[type="radio"]:checked + .priority-radio.low {
+    background: var(--priority-low-bg);
+    border-color: var(--priority-low-border);
+    color: var(--priority-low);
+    box-shadow: 0 4px 12px rgba(52, 199, 89, 0.2);
+}
+
+.priority-option input[type="radio"]:checked + .priority-radio.medium {
+    background: var(--priority-medium-bg);
+    border-color: var(--priority-medium-border);
+    color: var(--priority-medium);
+    box-shadow: 0 4px 12px rgba(255, 149, 0, 0.2);
+}
+
+.priority-option input[type="radio"]:checked + .priority-radio.high {
+    background: var(--priority-high-bg);
+    border-color: var(--priority-high-border);
+    color: var(--priority-high);
+    box-shadow: 0 4px 12px rgba(255, 59, 48, 0.2);
+}
+
+.priority-radio:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px var(--shadow);
+}
+
+.priority-option input[type="radio"]:checked + .priority-radio {
+    transform: translateY(-2px) scale(1.02);
+}
+
+.priority-icon {
+    font-size: 16px;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.priority-text {
+    font-weight: 600;
+    flex: 1;
+    text-align: center;
+}
+
+/* Адаптация для мобильных */
+@media (max-width: 480px) {
+    .priority-options {
+        flex-direction: column;
+        gap: 6px;
+    }
+    
+    .priority-radio {
+        justify-content: center;
+        padding: 10px 12px;
+    }
+    
+    .priority-text {
+        text-align: center;
+    }
+}
+
+/* Модальная версия приоритетов */
+.modal-priority .priority-options {
+    flex-direction: column;
+    gap: 8px;
+}
+
+.modal-priority .priority-radio {
+    justify-content: flex-start;
+    padding: 14px 16px;
+}
+
 .date-input {
     flex: 1;
     border: none;
@@ -410,13 +560,14 @@ body {
     border: 2px solid transparent;
     transition: var(--transition);
     font-weight: 500;
+    backdrop-filter: blur(10px);
 }
 
-.priority-select:focus,
 .date-input:focus {
     outline: none;
     border-color: var(--primary);
     box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+    background: var(--surface);
 }
 
 .toggle-options {
@@ -465,6 +616,7 @@ body {
     border-radius: var(--radius);
     border: 1px solid var(--border);
     box-shadow: 0 4px 16px var(--shadow);
+    backdrop-filter: blur(10px);
 }
 
 .filter-btn {
@@ -491,6 +643,11 @@ body {
     transform: scale(1.02);
 }
 
+.filter-btn:hover:not(.active) {
+    background: var(--surface-secondary);
+    color: var(--text-primary);
+}
+
 .filter-icon {
     font-size: 16px;
 }
@@ -509,15 +666,17 @@ body {
 }
 
 .task-item {
-    background: var(--surface-elevated);
+    background: var(--gradient-glass);
     border: 1px solid var(--border);
-    border-radius: var(--radius-large);
+    border-radius: var(--radius-xl);
     padding: var(--spacing-large);
     transition: var(--transition);
     cursor: pointer;
     position: relative;
     overflow: hidden;
     box-shadow: 0 2px 12px var(--shadow);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 .task-item:hover {
@@ -559,11 +718,13 @@ body {
     position: relative;
     background: var(--surface);
     order: 2;
+    backdrop-filter: blur(10px);
 }
 
 .task-checkbox:hover {
     border-color: var(--primary);
     transform: scale(1.1);
+    box-shadow: 0 4px 12px var(--shadow);
 }
 
 .task-checkbox.checked {
@@ -615,83 +776,74 @@ body {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    backdrop-filter: blur(10px);
 }
 
 .priority.high {
-    background: rgba(255, 59, 48, 0.15);
-    color: var(--danger);
+    background: var(--priority-high-bg);
+    color: var(--priority-high);
+    border: 1px solid var(--priority-high-border);
 }
 
 .priority.medium {
-    background: rgba(255, 149, 0, 0.15);
-    color: var(--warning);
+    background: var(--priority-medium-bg);
+    color: var(--priority-medium);
+    border: 1px solid var(--priority-medium-border);
 }
 
 .priority.low {
-    background: rgba(52, 199, 89, 0.15);
-    color: var(--accent);
+    background: var(--priority-low-bg);
+    color: var(--priority-low);
+    border: 1px solid var(--priority-low-border);
 }
 
-/* Архив по месяцам */
-.archive-list {
-    margin-top: var(--spacing-large);
+.task-due-date {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: var(--radius-small);
+    background: var(--surface-secondary);
+    backdrop-filter: blur(10px);
 }
 
-.archive-month {
-    margin-bottom: var(--spacing-large);
+/* Группы задач */
+.task-group {
+    margin-bottom: var(--spacing-xl);
 }
 
-.archive-month-header {
+.task-group-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: var(--spacing);
-    background: var(--surface-secondary);
-    border-radius: var(--radius);
-    cursor: pointer;
-    border: 1px solid var(--border);
     margin-bottom: var(--spacing);
-    transition: var(--transition);
+    padding: 0 var(--spacing-small);
 }
 
-.archive-month-header:hover {
-    background: var(--surface);
-    border-color: var(--primary);
-}
-
-.archive-month-title {
+.task-group-title {
+    font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
-    font-size: 16px;
+    margin: 0;
 }
 
-.archive-month-count {
+.task-group-count {
     background: var(--primary);
     color: white;
     padding: 4px 12px;
     border-radius: 12px;
     font-size: 12px;
     font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 }
 
-.archive-month-chevron {
-    transition: var(--transition);
-    color: var(--text-secondary);
-}
-
-.archive-month.expanded .archive-month-chevron {
-    transform: rotate(180deg);
-}
-
-.archive-month-tasks {
-    display: none;
+.task-group-list {
+    display: flex;
     flex-direction: column;
     gap: var(--spacing);
-    animation: slideDown 0.3s ease-out;
-}
-
-.archive-month.expanded .archive-month-tasks {
-    display: flex;
 }
 
 /* Пустое состояние */
@@ -727,12 +879,13 @@ body {
 
 .support-card {
     background: var(--gradient-support);
-    border-radius: var(--radius-large);
+    border-radius: var(--radius-xl);
     padding: var(--spacing-xl);
     position: relative;
     overflow: hidden;
     border: 1px solid var(--border);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 .support-header {
@@ -790,6 +943,7 @@ body {
     font-weight: 600;
     color: var(--text-primary);
     transition: var(--transition);
+    backdrop-filter: blur(10px);
 }
 
 .amount-input:focus {
@@ -863,17 +1017,6 @@ body {
     animation: spin 1s linear infinite;
 }
 
-.support-info {
-    text-align: center;
-}
-
-.support-info p {
-    color: var(--text-secondary);
-    font-size: 13px;
-    font-weight: 500;
-    opacity: 0.8;
-}
-
 /* Модальное окно */
 .modal {
     position: fixed;
@@ -888,18 +1031,21 @@ body {
     z-index: 1000;
     padding: var(--spacing);
     backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 .modal-content {
-    background: var(--surface-elevated);
-    border-radius: var(--radius-large);
+    background: var(--gradient-glass);
+    border-radius: var(--radius-xl);
     width: 100%;
     max-width: 420px;
     max-height: 90vh;
     overflow: hidden;
     animation: modalSlideIn 0.4s var(--spring);
     border: 1px solid var(--border);
-    box-shadow: 0 20px 60px var(--shadow-elevated);
+    box-shadow: 0 20px 60px var(--shadow-strong);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
 }
 
 @keyframes modalSlideIn {
@@ -919,12 +1065,14 @@ body {
     justify-content: space-between;
     padding: var(--spacing-large);
     border-bottom: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-glass);
+    backdrop-filter: blur(10px);
 }
 
 .modal-header h3 {
     font-size: 20px;
     font-weight: 700;
+    color: var(--text-primary);
 }
 
 .close-btn {
@@ -939,11 +1087,13 @@ body {
     justify-content: center;
     color: var(--text-secondary);
     transition: var(--transition);
+    backdrop-filter: blur(10px);
 }
 
 .close-btn:hover {
     background: var(--border);
     transform: scale(1.1);
+    color: var(--text-primary);
 }
 
 .modal-body {
@@ -951,8 +1101,7 @@ body {
 }
 
 .modal-input,
-.modal-textarea,
-.modal-select {
+.modal-textarea {
     width: 100%;
     border: 2px solid var(--border);
     background: var(--surface-secondary);
@@ -964,11 +1113,11 @@ body {
     font-family: inherit;
     transition: var(--transition);
     font-weight: 500;
+    backdrop-filter: blur(10px);
 }
 
 .modal-input:focus,
-.modal-textarea:focus,
-.modal-select:focus {
+.modal-textarea:focus {
     outline: none;
     border-color: var(--primary);
     background: var(--surface);
@@ -982,6 +1131,7 @@ body {
 
 .modal-options {
     display: flex;
+    flex-direction: column;
     gap: var(--spacing);
 }
 
@@ -990,7 +1140,8 @@ body {
     gap: var(--spacing);
     padding: var(--spacing-large);
     border-top: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-glass);
+    backdrop-filter: blur(10px);
 }
 
 .delete-btn-modal {
@@ -1004,6 +1155,7 @@ body {
     font-weight: 600;
     cursor: pointer;
     transition: var(--transition);
+    backdrop-filter: blur(10px);
 }
 
 .delete-btn-modal:hover {
@@ -1042,14 +1194,17 @@ body {
 }
 
 .notification {
-    background: var(--surface-elevated);
+    background: var(--gradient-glass);
     border: 1px solid var(--border);
     border-radius: var(--radius);
     padding: var(--spacing);
     margin-bottom: var(--spacing-small);
     box-shadow: 0 8px 32px var(--shadow-elevated);
     animation: notificationSlideIn 0.4s var(--spring);
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: var(--text-primary);
+    font-weight: 500;
 }
 
 @keyframes notificationSlideIn {
@@ -1087,6 +1242,7 @@ body {
     
     .options-row {
         flex-direction: column;
+        gap: var(--spacing);
     }
     
     .support-form {
@@ -1115,6 +1271,12 @@ body {
         width: 28px;
         height: 28px;
     }
+    
+    .notifications {
+        left: var(--spacing-small);
+        right: var(--spacing-small);
+        max-width: none;
+    }
 }
 
 /* Дополнительные анимации */
@@ -1141,8 +1303,7 @@ body {
 /* Улучшенные focus состояния */
 button:focus-visible,
 input:focus-visible,
-textarea:focus-visible,
-select:focus-visible {
+textarea:focus-visible {
     outline: 2px solid var(--primary);
     outline-offset: 2px;
 }
@@ -1176,80 +1337,40 @@ select:focus-visible {
 .support-card {
     animation-delay: 0.3s;
 }
-/* Группы задач */
-.task-group {
-    margin-bottom: var(--spacing-xl);
+
+/* Эффекты glassmorphism для темной темы */
+.dark-theme .task-item,
+.dark-theme .quick-add-form,
+.dark-theme .modal-content,
+.dark-theme .support-card {
+    background: rgba(28, 28, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.task-group-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: var(--spacing);
-    padding: 0 var(--spacing-small);
+.dark-theme .header {
+    background: rgba(0, 0, 0, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.task-group-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--text-primary);
-    margin: 0;
+.dark-theme .filters {
+    background: rgba(28, 28, 30, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.task-group-count {
-    background: var(--primary);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 12px;
-    font-size: 12px;
-    font-weight: 700;
-    min-width: 24px;
-    text-align: center;
+/* Специальные эффекты для приоритетов в темной теме */
+.dark-theme .priority-option input[type="radio"]:checked + .priority-radio {
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
 }
 
-.task-group-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing);
+/* Улучшенные тени для темной темы */
+.dark-theme .task-item:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
 }
 
-/* Задачи с просрочкой */
-.task-group:has(.task-item[data-overdue]) .task-group-title {
-    color: var(--danger);
+.dark-theme .modal-content {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.9);
 }
 
-.task-group:has(.task-item[data-overdue]) .task-group-count {
-    background: var(--danger);
-}
-
-/* Задачи на сегодня */
-.task-group:has(.task-item[data-today]) .task-group-title {
-    color: var(--warning);
-}
-
-.task-group:has(.task-item[data-today]) .task-group-count {
-    background: var(--warning);
-}
-
-/* Обновленные стили для task-meta */
-.task-due-date {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: 600;
-}
-
-/* Просрочено - красный */
-.task-item[data-overdue] .task-due-date {
-    color: var(--danger);
-}
-
-/* Сегодня - оранжевый */
-.task-item[data-today] .task-due-date {
-    color: var(--warning);
-}
-
-/* Завтра - зеленый */
-.task-item[data-tomorrow] .task-due-date {
-    color: var(--accent);
+.dark-theme .notification {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
 }
