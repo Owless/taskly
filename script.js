@@ -136,6 +136,9 @@ class TasklyApp {
         // Расширенные опции
         document.getElementById('toggleOptions').addEventListener('click', this.toggleExpandedOptions.bind(this));
         
+        // Устанавливаем автоматическое время
+        this.setDefaultDateTime();
+        
         // Фильтры
         document.querySelectorAll('.filter-btn').forEach(btn => {
             btn.addEventListener('click', (e) => this.setFilter(e.target.dataset.filter));
@@ -155,6 +158,15 @@ class TasklyApp {
                 this.closeModal();
             }
         });
+    }
+
+    setDefaultDateTime() {
+        const now = new Date();
+        now.setHours(now.getHours() + 1); // На час вперед
+        now.setMinutes(0); // Округляем до часа
+        
+        const dateString = now.toISOString().slice(0, 16);
+        document.getElementById('taskDueDate').value = dateString;
     }
 
     setupDonationListeners() {
@@ -198,32 +210,37 @@ class TasklyApp {
             // Показываем загрузку
             this.setDonateButtonLoading(true);
 
-            // Получаем данные для создания инвойса
-            const response = await fetch('/api/create-invoice', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegramId: this.currentUser.telegram_id,
-                    amount: amount
-                })
-            });
-
-            const result = await response.json();
-
-            if (!result.success) {
-                throw new Error(result.error);
-            }
-
-            // Создаем инвойс через Telegram WebApp API
+            // Создаем инвойс напрямую через Telegram Web App API
             const tg = window.Telegram.WebApp;
             
-            this.showNotification('Открываем форму оплаты...', 'success');
+            // Генерируем уникальный payload
+            const payload = `donation_${this.currentUser.telegram_id}_${Date.now()}`;
+            
+            // Создаем invoice URL через Telegram Bot API
+            const invoiceParams = {
+                title: 'Поддержка Taskly',
+                description: `Поддержка разработки приложения - ${amount} ⭐`,
+                payload: payload,
+                provider_token: '', // Пустой для Telegram Stars
+                currency: 'XTR',
+                prices: JSON.stringify([{ 
+                    label: `${amount} Stars`, 
+                    amount: amount 
+                }])
+            };
 
-            // Используем Telegram WebApp для показа инвойса
-            tg.openInvoice(result.invoiceData.payload, (status) => {
-                this.handlePaymentResult(status, amount, result.invoiceData.payload);
-            });
-
+            // Создаем URL для инвойса
+            const botToken = await this.getBotToken();
+            const invoiceUrl = await this.createInvoiceUrl(botToken, invoiceParams);
+            
+            console.log('Opening invoice:', invoiceUrl);
+            
+            // Открываем инвойс
+            tg.openLink(invoiceUrl);
+            
+            // Сохраняем информацию о платеже для отслеживания
+            this.trackPayment(payload, amount);
+            
         } catch (error) {
             console.error('Donation error:', error);
             this.showNotification(error.message || 'Ошибка при создании платежа', 'error');
@@ -232,69 +249,47 @@ class TasklyApp {
         }
     }
 
-    handlePaymentResult(status, amount, payload) {
-        console.log('Payment result:', status);
-
-        switch (status) {
-            case 'paid':
-                this.onPaymentSuccess(amount, payload);
-                break;
-            case 'cancelled':
-                this.showNotification('Платеж отменен', 'error');
-                break;
-            case 'failed':
-                this.showNotification('Ошибка при оплате', 'error');
-                break;
-            case 'pending':
-                this.showNotification('Платеж в обработке...', 'success');
-                break;
-            default:
-                this.showNotification('Неизвестный статус платежа', 'error');
+    async getBotToken() {
+        try {
+            const response = await fetch('/api/bot-token');
+            const result = await response.json();
+            return result.token;
+        } catch (error) {
+            throw new Error('Не удалось получить токен бота');
         }
     }
 
-    async onPaymentSuccess(amount, payload) {
-        try {
-            // Валидируем платеж на сервере
-            const response = await fetch('/api/validate-payment', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    telegramId: this.currentUser.telegram_id,
-                    amount: amount,
-                    payload: payload
-                })
-            });
+    async createInvoiceUrl(botToken, params) {
+        const url = `https://api.telegram.org/bot${botToken}/createInvoiceLink`;
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
 
-            const result = await response.json();
-
-            if (result.success) {
-                this.showNotification(`Спасибо за поддержку! ${amount} ⭐`, 'success');
-                
-                // Очищаем форму
-                document.getElementById('donationAmount').value = '';
-                document.getElementById('donateBtn').disabled = true;
-                
-                // Haptic feedback
-                this.hapticFeedback('heavy');
-                
-                // Показываем конфетти (если доступно)
-                if (window.Telegram?.WebApp?.showPopup) {
-                    window.Telegram.WebApp.showPopup({
-                        title: 'Спасибо! 🎉',
-                        message: `Ваше пожертвование в ${amount} ⭐ очень важно для развития проекта!`,
-                        buttons: [{ type: 'ok', text: 'Отлично!' }]
-                    });
-                }
-                
-            } else {
-                throw new Error(result.error);
-            }
-
-        } catch (error) {
-            console.error('Payment validation error:', error);
-            this.showNotification('Ошибка валидации платежа', 'error');
+        const result = await response.json();
+        
+        if (!result.ok) {
+            throw new Error(result.description || 'Ошибка создания инвойса');
         }
+        
+        return result.result;
+    }
+
+    trackPayment(payload, amount) {
+        // Можно добавить логику отслеживания платежей
+        console.log(`Tracking payment: ${payload} for ${amount} stars`);
+        
+        // Показываем уведомление
+        this.showNotification(`Платеж на ${amount} ⭐ создан`, 'success');
+        
+        // Очищаем форму
+        document.getElementById('donationAmount').value = '';
+        document.getElementById('donateBtn').disabled = true;
+        
+        // Haptic feedback
+        this.hapticFeedback('light');
     }
 
     setDonateButtonLoading(loading) {
@@ -308,7 +303,7 @@ class TasklyApp {
                     <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/>
                     <path d="M12 1v6m0 10v6m11-7h-6M6 12H0" stroke="currentColor" stroke-width="2"/>
                 </svg>
-                Обработка...
+                Создание...
             `;
             
         } else {
@@ -414,6 +409,11 @@ class TasklyApp {
             
             if (result.success) {
                 task.completed = !task.completed;
+                if (task.completed) {
+                    task.completed_at = new Date().toISOString();
+                } else {
+                    task.completed_at = null;
+                }
                 this.render();
                 this.updateStats();
                 
@@ -541,32 +541,48 @@ class TasklyApp {
         }
     }
 
-    groupTasksByMonth(tasks) {
-        const groups = {};
-        
+    groupTasksByTime(tasks) {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const nextWeek = new Date(today);
+        nextWeek.setDate(nextWeek.getDate() + 7);
+
+        const groups = {
+            overdue: { name: '🔴 Просрочено', tasks: [] },
+            today: { name: '🔥 Сегодня', tasks: [] },
+            tomorrow: { name: '⭐ Завтра', tasks: [] },
+            week: { name: '📅 На неделе', tasks: [] },
+            future: { name: '📋 Позже', tasks: [] },
+            noDate: { name: '📝 Без срока', tasks: [] }
+        };
+
         tasks.forEach(task => {
-            const date = new Date(task.completed ? task.updated_at : task.created_at);
-            const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const monthName = date.toLocaleDateString('ru-RU', { 
-                year: 'numeric', 
-                month: 'long' 
-            });
-            
-            if (!groups[monthKey]) {
-                groups[monthKey] = {
-                    name: monthName,
-                    tasks: []
-                };
+            if (!task.due_date) {
+                groups.noDate.tasks.push(task);
+                return;
             }
-            groups[monthKey].tasks.push(task);
+
+            const dueDate = new Date(task.due_date);
+            const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+
+            if (dueDateOnly < today) {
+                groups.overdue.tasks.push(task);
+            } else if (dueDateOnly.getTime() === today.getTime()) {
+                groups.today.tasks.push(task);
+            } else if (dueDateOnly.getTime() === tomorrow.getTime()) {
+                groups.tomorrow.tasks.push(task);
+            } else if (dueDateOnly <= nextWeek) {
+                groups.week.tasks.push(task);
+            } else {
+                groups.future.tasks.push(task);
+            }
         });
-        
+
         return Object.entries(groups)
-            .sort(([a], [b]) => b.localeCompare(a))
-            .map(([key, value]) => ({
-                key,
-                ...value
-            }));
+            .filter(([key, group]) => group.tasks.length > 0)
+            .map(([key, group]) => ({ key, ...group }));
     }
 
     updateStats() {
@@ -578,26 +594,46 @@ class TasklyApp {
         document.getElementById('taskTitle').value = '';
         document.getElementById('taskDescription').value = '';
         document.getElementById('taskPriority').value = 'medium';
-        document.getElementById('taskDueDate').value = '';
         document.getElementById('addTaskBtn').disabled = true;
+        
+        // Устанавливаем новое время по умолчанию
+        this.setDefaultDateTime();
         
         // Скрываем расширенные опции
         document.getElementById('expandedOptions').style.display = 'none';
         document.getElementById('toggleOptions').classList.remove('expanded');
     }
 
-    formatDate(dateString) {
+    formatDueDate(dateString) {
         if (!dateString) return '';
+        
         const date = new Date(dateString);
         const now = new Date();
-        const diff = date.getTime() - now.getTime();
-        const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
         
-        if (days === 0) return 'Сегодня';
-        if (days === 1) return 'Завтра';
-        if (days === -1) return 'Вчера';
-        if (days > 0) return `Через ${days} дн.`;
-        return `${Math.abs(days)} дн. назад`;
+        const dueDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        const timeString = date.toLocaleTimeString('ru-RU', { 
+            hour: '2-digit', 
+            minute: '2-digit' 
+        });
+
+        if (dueDateOnly < today) {
+            const daysDiff = Math.ceil((today - dueDateOnly) / (1000 * 60 * 60 * 24));
+            return `${daysDiff} дн. назад в ${timeString}`;
+        } else if (dueDateOnly.getTime() === today.getTime()) {
+            return `Сегодня в ${timeString}`;
+        } else if (dueDateOnly.getTime() === tomorrow.getTime()) {
+            return `Завтра в ${timeString}`;
+        } else {
+            const daysDiff = Math.ceil((dueDateOnly - today) / (1000 * 60 * 60 * 24));
+            if (daysDiff <= 7) {
+                return `Через ${daysDiff} дн. в ${timeString}`;
+            } else {
+                return `${date.toLocaleDateString('ru-RU')} в ${timeString}`;
+            }
+        }
     }
 
     formatCreatedDate(dateString) {
@@ -625,12 +661,10 @@ class TasklyApp {
 
         const filteredTasks = this.getFilteredTasks();
         const tasksContainer = document.getElementById('tasksList');
-        const archiveContainer = document.getElementById('archiveList');
         const emptyState = document.getElementById('emptyState');
 
         // Очищаем контейнеры
         tasksContainer.innerHTML = '';
-        archiveContainer.innerHTML = '';
 
         if (filteredTasks.length === 0) {
             emptyState.style.display = 'block';
@@ -640,13 +674,12 @@ class TasklyApp {
 
         emptyState.style.display = 'none';
 
-        if (this.currentFilter === 'completed') {
-            // Показываем архив по месяцам
-            const monthGroups = this.groupTasksByMonth(filteredTasks);
-            archiveContainer.innerHTML = monthGroups.map(group => this.renderArchiveMonth(group)).join('');
-            this.attachArchiveEventListeners();
+        if (this.currentFilter === 'active') {
+            // Группируем активные задачи по времени
+            const timeGroups = this.groupTasksByTime(filteredTasks);
+            tasksContainer.innerHTML = timeGroups.map(group => this.renderTaskGroup(group)).join('');
         } else {
-            // Показываем обычный список
+            // Показываем обычный список для completed и all
             tasksContainer.innerHTML = filteredTasks.map(task => this.renderTask(task)).join('');
         }
         
@@ -654,32 +687,18 @@ class TasklyApp {
         this.attachTaskEventListeners();
     }
 
-    renderArchiveMonth(group) {
+    renderTaskGroup(group) {
         return `
-            <div class="archive-month" data-month="${group.key}">
-                <div class="archive-month-header">
-                    <div class="archive-month-title">${group.name}</div>
-                    <div class="archive-month-count">${group.tasks.length}</div>
-                    <div class="archive-month-chevron">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                            <path d="M6 9L12 15L18 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        </svg>
-                    </div>
+            <div class="task-group">
+                <div class="task-group-header">
+                    <h3 class="task-group-title">${group.name}</h3>
+                    <span class="task-group-count">${group.tasks.length}</span>
                 </div>
-                <div class="archive-month-tasks">
+                <div class="task-group-list">
                     ${group.tasks.map(task => this.renderTask(task)).join('')}
                 </div>
             </div>
         `;
-    }
-
-    attachArchiveEventListeners() {
-        document.querySelectorAll('.archive-month-header').forEach(header => {
-            header.addEventListener('click', (e) => {
-                const monthContainer = e.target.closest('.archive-month');
-                monthContainer.classList.toggle('expanded');
-            });
-        });
     }
 
     updateEmptyState() {
@@ -716,8 +735,8 @@ class TasklyApp {
                         ${task.description ? `<div class="task-description">${this.escapeHtml(task.description)}</div>` : ''}
                         <div class="task-meta">
                             <span class="priority ${task.priority}">${priorityText[task.priority]}</span>
-                            ${task.due_date ? `<span class="task-due-date">📅 ${this.formatDate(task.due_date)}</span>` : ''}
-                            <span class="task-created">🕐 ${this.formatCreatedDate(task.created_at)}</span>
+                            ${task.due_date ? `<span class="task-due-date">⏰ ${this.formatDueDate(task.due_date)}</span>` : ''}
+                            <span class="task-created">📝 ${this.formatCreatedDate(task.created_at)}</span>
                         </div>
                     </div>
                     <div class="task-checkbox ${task.completed ? 'checked' : ''}" data-task-id="${task.id}"></div>
