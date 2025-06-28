@@ -31,9 +31,8 @@ class TasklyApp {
     }
 
     isTelegramEnvironment() {
-        // Для разработки - можно закомментировать
-        return window.Telegram && window.Telegram.WebApp;
-        // return true; // Раскомментировать для тестирования без Telegram
+        // Проверяем наличие Telegram WebApp или параметров в URL
+        return window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData;
     }
 
     showAccessDenied() {
@@ -88,8 +87,8 @@ class TasklyApp {
     }
 
     setupLogo() {
-        // Используем LOGO_IMAGE_URL если доступен
-        const logoUrl = window.LOGO_IMAGE_URL || process.env.LOGO_IMAGE_URL;
+        // Проверяем переменную окружения для логотипа
+        const logoUrl = window.LOGO_IMAGE_URL;
         
         if (logoUrl) {
             const logoImg = document.getElementById('logoImage');
@@ -108,18 +107,11 @@ class TasklyApp {
 
     async authenticate() {
         try {
-            // Для разработки без Telegram
-            if (!window.Telegram?.WebApp?.initData) {
-                this.currentUser = {
-                    telegram_id: 12345,
-                    first_name: 'Test',
-                    last_name: 'User'
-                };
-                this.updateUserInfo();
-                return;
-            }
-
             const initData = window.Telegram.WebApp.initData;
+            
+            if (!initData) {
+                throw new Error('No Telegram data available');
+            }
             
             const response = await fetch('/api/auth', {
                 method: 'POST',
@@ -138,6 +130,7 @@ class TasklyApp {
         } catch (error) {
             console.error('Authentication failed:', error);
             this.showNotification('Ошибка авторизации', 'error');
+            this.showAccessDenied();
         }
     }
 
@@ -256,18 +249,9 @@ class TasklyApp {
             
             if (result.success && result.settings) {
                 this.settings = { ...this.settings, ...result.settings };
-            } else {
-                const savedSettings = localStorage.getItem('taskly_settings');
-                if (savedSettings) {
-                    this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
-                }
             }
         } catch (error) {
             console.error('Failed to load settings from server:', error);
-            const savedSettings = localStorage.getItem('taskly_settings');
-            if (savedSettings) {
-                this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
-            }
         }
         
         this.updateSettingsUI();
@@ -275,8 +259,6 @@ class TasklyApp {
 
     async saveSettings() {
         if (!this.currentUser) return;
-
-        localStorage.setItem('taskly_settings', JSON.stringify(this.settings));
 
         try {
             const response = await fetch(`/api/settings/${this.currentUser.telegram_id}`, {
@@ -301,7 +283,7 @@ class TasklyApp {
         this.updateCurrentTime();
     }
 
- updateCurrentTime() {
+    updateCurrentTime() {
         const timezone = this.getUserTimezone();
         const now = new Date();
         
@@ -1063,9 +1045,6 @@ class TasklyApp {
         }, 30000);
     }
 }
-
-// Глобальная переменная для логотипа
-window.LOGO_IMAGE_URL = process?.env?.LOGO_IMAGE_URL;
 
 // Инициализация приложения
 const app = new TasklyApp();
