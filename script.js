@@ -210,36 +210,44 @@ class TasklyApp {
             // Показываем загрузку
             this.setDonateButtonLoading(true);
 
-            // Создаем инвойс напрямую через Telegram Web App API
             const tg = window.Telegram.WebApp;
             
             // Генерируем уникальный payload
             const payload = `donation_${this.currentUser.telegram_id}_${Date.now()}`;
             
-            // Создаем invoice URL через Telegram Bot API
-            const invoiceParams = {
-                title: 'Поддержка Taskly',
-                description: `Поддержка разработки приложения - ${amount} ⭐`,
-                payload: payload,
-                provider_token: '', // Пустой для Telegram Stars
-                currency: 'XTR',
-                prices: JSON.stringify([{ 
-                    label: `${amount} Stars`, 
-                    amount: amount 
-                }])
-            };
+            // Создаем инвойс через наш API
+            const response = await fetch('/api/create-invoice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    amount: amount,
+                    payload: payload,
+                    userId: this.currentUser.telegram_id
+                })
+            });
 
-            // Создаем URL для инвойса
-            const botToken = await this.getBotToken();
-            const invoiceUrl = await this.createInvoiceUrl(botToken, invoiceParams);
+            const result = await response.json();
             
-            console.log('Opening invoice:', invoiceUrl);
+            if (!result.success) {
+                throw new Error(result.error || 'Ошибка создания платежа');
+            }
+
+            console.log('Opening invoice in Telegram...');
             
-            // Открываем инвойс
-            tg.openLink(invoiceUrl);
-            
-            // Сохраняем информацию о платеже для отслеживания
-            this.trackPayment(payload, amount);
+            // Открываем инвойс ВНУТРИ Telegram приложения
+            tg.openInvoice(result.invoiceLink, (status) => {
+                console.log('Payment status:', status);
+                
+                if (status === 'paid') {
+                    this.handlePaymentSuccess(amount);
+                } else if (status === 'cancelled') {
+                    this.showNotification('Платеж отменен', 'error');
+                } else if (status === 'failed') {
+                    this.showNotification('Ошибка платежа', 'error');
+                } else if (status === 'pending') {
+                    this.showNotification('Платеж обрабатывается...', 'success');
+                }
+            });
             
         } catch (error) {
             console.error('Donation error:', error);
@@ -249,47 +257,30 @@ class TasklyApp {
         }
     }
 
-    async getBotToken() {
-        try {
-            const response = await fetch('/api/bot-token');
-            const result = await response.json();
-            return result.token;
-        } catch (error) {
-            throw new Error('Не удалось получить токен бота');
-        }
-    }
-
-    async createInvoiceUrl(botToken, params) {
-        const url = `https://api.telegram.org/bot${botToken}/createInvoiceLink`;
-        
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
-        });
-
-        const result = await response.json();
-        
-        if (!result.ok) {
-            throw new Error(result.description || 'Ошибка создания инвойса');
-        }
-        
-        return result.result;
-    }
-
-    trackPayment(payload, amount) {
-        // Можно добавить логику отслеживания платежей
-        console.log(`Tracking payment: ${payload} for ${amount} stars`);
-        
-        // Показываем уведомление
-        this.showNotification(`Платеж на ${amount} ⭐ создан`, 'success');
+    handlePaymentSuccess(amount) {
+        this.showNotification(`Спасибо за поддержку! ${amount} ⭐`, 'success');
         
         // Очищаем форму
         document.getElementById('donationAmount').value = '';
         document.getElementById('donateBtn').disabled = true;
         
         // Haptic feedback
-        this.hapticFeedback('light');
+        this.hapticFeedback('medium');
+        
+        // Можно добавить конфетти или другие эффекты
+        this.celebratePayment();
+    }
+
+    celebratePayment() {
+        // Простая анимация благодарности
+        const supportCard = document.querySelector('.support-card');
+        supportCard.style.transform = 'scale(1.02)';
+        supportCard.style.boxShadow = '0 12px 40px rgba(0, 122, 255, 0.4)';
+        
+        setTimeout(() => {
+            supportCard.style.transform = '';
+            supportCard.style.boxShadow = '';
+        }, 500);
     }
 
     setDonateButtonLoading(loading) {
@@ -636,25 +627,6 @@ class TasklyApp {
         }
     }
 
-    formatCreatedDate(dateString) {
-        const date = new Date(dateString);
-        const now = new Date();
-        const diff = now.getTime() - date.getTime();
-        const minutes = Math.floor(diff / (1000 * 60));
-        const hours = Math.floor(minutes / 60);
-        const days = Math.floor(hours / 24);
-        
-        if (minutes < 1) return 'Только что';
-        if (minutes < 60) return `${minutes} мин. назад`;
-        if (hours < 24) return `${hours} ч. назад`;
-        if (days < 7) return `${days} дн. назад`;
-        
-        return date.toLocaleDateString('ru-RU', { 
-            day: '2-digit', 
-            month: '2-digit'
-        });
-    }
-
     render() {
         document.getElementById('loading').style.display = 'none';
         document.getElementById('mainContent').style.display = 'block';
@@ -736,7 +708,6 @@ class TasklyApp {
                         <div class="task-meta">
                             <span class="priority ${task.priority}">${priorityText[task.priority]}</span>
                             ${task.due_date ? `<span class="task-due-date">⏰ ${this.formatDueDate(task.due_date)}</span>` : ''}
-                            <span class="task-created">📝 ${this.formatCreatedDate(task.created_at)}</span>
                         </div>
                     </div>
                     <div class="task-checkbox ${task.completed ? 'checked' : ''}" data-task-id="${task.id}"></div>
