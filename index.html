@@ -35,6 +35,11 @@
                     <span>Откройте приложение</span>
                 </div>
             </div>
+            <!-- Отладочная информация -->
+            <div style="margin-top: 20px; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 8px; font-size: 12px;">
+                <div>Debug Info:</div>
+                <div id="debugInfo"></div>
+            </div>
         </div>
     </div>
 
@@ -327,6 +332,24 @@
         <div id="notifications" class="notifications"></div>
     </div>
 
+    <script>
+        // Отладочная информация
+        function updateDebugInfo() {
+            const debugInfo = document.getElementById('debugInfo');
+            if (debugInfo) {
+                debugInfo.innerHTML = `
+                    <div>Telegram: ${typeof window.Telegram}</div>
+                    <div>WebApp: ${typeof window.Telegram?.WebApp}</div>
+                    <div>initData: ${window.Telegram?.WebApp?.initData ? 'exists' : 'none'}</div>
+                    <div>User-Agent: ${navigator.userAgent.includes('Telegram') ? 'Telegram' : 'Other'}</div>
+                    <div>URL: ${window.location.href}</div>
+                `;
+            }
+        }
+        
+        // Показываем отладочную информацию
+        setTimeout(updateDebugInfo, 1000);
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
