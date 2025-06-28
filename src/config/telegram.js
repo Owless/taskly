@@ -179,6 +179,10 @@ const initializeBot = async () => {
     // Устанавливаем webhook если нужно
     await setupWebhook();
     
+    // Инициализируем обработчики команд
+    const { initializeHandlers } = require('../services/telegramHandlers');
+    initializeHandlers();
+    
     return true;
   } catch (error) {
     console.error('❌ Ошибка инициализации бота:', error.message);
