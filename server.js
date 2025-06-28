@@ -153,12 +153,31 @@ bot.onText(/\/start/, async (msg) => {
   };
 
   try {
-    await bot.sendMessage(chatId, welcomeMessage, {
-      parse_mode: 'Markdown',
-      reply_markup: keyboard
-    });
+    // Сначала отправляем картинку
+    if (process.env.START_IMAGE_URL) {
+      await bot.sendPhoto(chatId, process.env.START_IMAGE_URL, {
+        caption: welcomeMessage,
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } else {
+      // Если картинки нет, отправляем просто текст
+      await bot.sendMessage(chatId, welcomeMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    }
   } catch (error) {
     console.error('Start command error:', error);
+    // Fallback - отправляем текст без картинки
+    try {
+      await bot.sendMessage(chatId, welcomeMessage, {
+        parse_mode: 'Markdown',
+        reply_markup: keyboard
+      });
+    } catch (fallbackError) {
+      console.error('Fallback start command error:', fallbackError);
+    }
   }
 });
 
@@ -187,6 +206,7 @@ bot.onText(/\/help/, async (msg) => {
 - Нажми на чекбокс чтобы отметить выполненную
 - Используй фильтры: Активные/Все/Архив
 - Нажми на задачу для редактирования
+- Используй шестеренку для настройки часового пояса и уведомлений
 
 Остались вопросы? Пиши разработчику`;
 
@@ -232,7 +252,8 @@ bot.on('callback_query', async (callbackQuery) => {
 🔧 *Управление:*
 - Нажми на чекбокс чтобы отметить выполненную
 - Используй фильтры: Активные/Все/Архив
-- Нажми на задачу для редактирования`;
+- Нажми на задачу для редактирования
+- Используй шестеренку для настроек`;
 
     try {
       await bot.sendMessage(message.chat.id, helpMessage, { parse_mode: 'Markdown' });
@@ -421,6 +442,21 @@ app.post('/api/tasks', async (req, res) => {
   try {
     const { telegramId, title, description, priority, dueDate } = req.body;
     
+    // Валидация ограничений
+    if (!title || title.length > 100) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Название задачи должно быть от 1 до 100 символов' 
+      });
+    }
+    
+    if (description && description.length > 500) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Описание не должно превышать 500 символов' 
+      });
+    }
+    
     const { data: user, error: userError } = await supabaseAdmin
       .from('users')
       .select('id')
@@ -433,8 +469,8 @@ app.post('/api/tasks', async (req, res) => {
       .from('tasks')
       .insert({
         user_id: user.id,
-        title,
-        description: description || null,
+        title: title.trim(),
+        description: description ? description.trim() : null,
         priority: priority || 'medium',
         due_date: dueDate || null
       })
@@ -455,11 +491,34 @@ app.put('/api/tasks/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
+    // Валидация ограничений при обновлении
+    if (updates.title && (updates.title.length === 0 || updates.title.length > 100)) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Название задачи должно быть от 1 до 100 символов' 
+      });
+    }
+    
+    if (updates.description && updates.description.length > 500) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Описание не должно превышать 500 символов' 
+      });
+    }
+    
     // Если отмечаем как выполненную, добавляем completed_at
     if (updates.completed && !updates.completed_at) {
       updates.completed_at = new Date().toISOString();
-    } else if (!updates.completed) {
+    } else if (updates.completed === false) {
       updates.completed_at = null;
+    }
+    
+    // Обрезаем пробелы
+    if (updates.title) {
+      updates.title = updates.title.trim();
+    }
+    if (updates.description) {
+      updates.description = updates.description.trim();
     }
     
     const { data: task, error } = await supabaseAdmin
@@ -511,6 +570,10 @@ async function setupWebhook() {
 app.listen(PORT, async () => {
   console.log(`🚀 Taskly server running on port ${PORT}`);
   console.log(`📱 App URL: ${process.env.APP_URL}`);
+  
+  if (process.env.START_IMAGE_URL) {
+    console.log(`🖼️ Start image URL: ${process.env.START_IMAGE_URL}`);
+  }
   
   await setupWebhook();
   
