@@ -52,7 +52,7 @@
             <!-- Заголовок -->
             <header class="header">
                 <div class="header-content">
-                    <div class="app-logo">
+                    <div class="user-avatar">
                         <img id="logoImage" src="" alt="Taskly Logo" class="logo-image" style="display: none;">
                         <span id="userInitials">T</span>
                     </div>
@@ -328,12 +328,6 @@
         <div id="notifications" class="notifications"></div>
     </div>
 
-    <script>
-        // Глобальная переменная для логотипа
-        if (typeof process !== 'undefined' && process.env && process.env.LOGO_IMAGE_URL) {
-            window.LOGO_IMAGE_URL = process.env.LOGO_IMAGE_URL;
-        }
-    </script>
     <script src="script.js"></script>
 </body>
 </html>
