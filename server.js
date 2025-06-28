@@ -1,7 +1,6 @@
 require('dotenv').config();
 const express = require('express');
 const TelegramBot = require('node-telegram-bot-api');
-const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
@@ -17,37 +16,13 @@ const supabaseAdmin = createClient(
 // Telegram Bot
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN, { polling: false });
 
-// Webhook для бота
-const WEBHOOK_URL = `${process.env.APP_URL}/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
-
 app.use(express.json());
 app.use(express.static('.'));
 
-// Настройка webhook для бота
-async function setupWebhook() {
-  try {
-    await bot.setWebHook(WEBHOOK_URL);
-    console.log('✅ Webhook установлен:', WEBHOOK_URL);
-  } catch (error) {
-    console.error('❌ Ошибка установки webhook:', error);
-  }
-}
-
-// Проверка прав бота
-async function checkBotPermissions() {
-  try {
-    const botInfo = await bot.getMe();
-    console.log('🤖 Bot info:', botInfo.username);
-    
-    if (botInfo.can_receive_payments) {
-      console.log('✅ Bot can receive payments');
-    } else {
-      console.log('❌ Bot cannot receive payments - check BotFather settings');
-    }
-  } catch (error) {
-    console.error('Error checking bot:', error);
-  }
-}
+// API для получения токена бота (для создания платежей)
+app.get('/api/bot-token', (req, res) => {
+  res.json({ token: process.env.TELEGRAM_BOT_TOKEN });
+});
 
 // Webhook обработчик для бота
 app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
@@ -57,101 +32,6 @@ app.post(`/webhook/${process.env.TELEGRAM_BOT_TOKEN}`, (req, res) => {
   } catch (error) {
     console.error('Webhook processing error:', error);
     res.sendStatus(500);
-  }
-});
-
-// API для создания invoice данных (НЕ отправляем инвойс, а возвращаем данные)
-app.post('/api/create-invoice', async (req, res) => {
-  try {
-    const { telegramId, amount } = req.body;
-    
-    if (!telegramId || !amount || amount < 1 || amount > 2500) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Некорректные параметры' 
-      });
-    }
-
-    console.log(`Creating invoice data for ${amount} stars for user ${telegramId}`);
-    
-    // Создаем уникальный payload
-    const payload = `donation_${telegramId}_${Date.now()}`;
-    
-    // Возвращаем данные для создания инвойса в WebApp
-    const invoiceData = {
-      title: 'Поддержка Taskly',
-      description: `Поддержка разработки приложения - ${amount} ⭐`,
-      payload: payload,
-      provider_token: '', // Пустой для Telegram Stars
-      currency: 'XTR',
-      prices: [{ 
-        label: `${amount} Stars`, 
-        amount: amount 
-      }],
-      max_tip_amount: 0,
-      suggested_tip_amounts: [],
-      need_name: false,
-      need_phone_number: false,
-      need_email: false,
-      need_shipping_address: false,
-      send_phone_number_to_provider: false,
-      send_email_to_provider: false,
-      is_flexible: false
-    };
-    
-    console.log(`✅ Invoice data created for ${amount} stars`);
-    
-    res.json({ 
-      success: true, 
-      invoiceData: invoiceData
-    });
-    
-  } catch (error) {
-    console.error('❌ Invoice data creation error:', error);
-    
-    res.status(400).json({ 
-      success: false, 
-      error: 'Не удалось подготовить платеж' 
-    });
-  }
-});
-
-// API для валидации платежа (после успешной оплаты)
-app.post('/api/validate-payment', async (req, res) => {
-  try {
-    const { telegramId, payload, amount } = req.body;
-    
-    console.log(`Validating payment for user ${telegramId}, amount: ${amount}`);
-    
-    // Логируем платеж в Supabase
-    const { data, error } = await supabaseAdmin
-      .from('donations')
-      .insert({
-        telegram_id: telegramId,
-        amount: amount,
-        currency: 'XTR',
-        payload: payload,
-        status: 'completed'
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    
-    console.log('✅ Payment validated and saved');
-    
-    res.json({ 
-      success: true, 
-      message: 'Платеж успешно обработан',
-      donation: data
-    });
-    
-  } catch (error) {
-    console.error('❌ Payment validation error:', error);
-    res.status(400).json({ 
-      success: false, 
-      error: 'Ошибка валидации платежа' 
-    });
   }
 });
 
@@ -167,9 +47,9 @@ bot.onText(/\/start/, async (msg) => {
 📱 *Открыть приложение* - нажми кнопку ниже
 📋 *Возможности:*
 - Создавать и управлять задачами
-- Устанавливать приоритеты
+- Устанавливать приоритеты и сроки
 - Отмечать выполненные дела
-- Фильтровать по статусу
+- Группировка по времени выполнения
 
 💡 *Команды:*
 /help - помощь
@@ -209,22 +89,22 @@ bot.onText(/\/help/, async (msg) => {
 🎯 *Основные функции:*
 - ✅ Создание задач с описанием
 - 🎨 Установка приоритетов (низкий/средний/высокий)
-- 📅 Установка сроков выполнения
+- ⏰ Установка сроков выполнения
 - 🔄 Отметка выполненных задач
-- 🔍 Фильтрация задач
+- 📊 Группировка по времени
 
-📱 *Как пользоваться:*
-1. Нажми "Открыть Taskly" 
-2. Введи название задачи
-3. Добавь описание (опционально)
-4. Выбери приоритет
-5. Установи срок (опционально)
-6. Нажми "Добавить задачу"
+📱 *Группировка задач:*
+🔴 Просрочено - задачи с истекшим сроком
+🔥 Сегодня - задачи на сегодня
+⭐ Завтра - задачи на завтра
+📅 На неделе - задачи на ближайшие 7 дней
+📋 Позже - задачи на будущее
+📝 Без срока - задачи без установленного срока
 
 🔧 *Управление:*
 - Нажми на чекбокс чтобы отметить выполненную
-- Используй фильтры: Все/Активные/Выполненные
-- Кнопка "Удалить" для удаления задачи
+- Используй фильтры: Активные/Все/Архив
+- Нажми на задачу для редактирования
 
 Остались вопросы? Пиши разработчику`;
 
@@ -249,21 +129,6 @@ bot.onText(/\/help/, async (msg) => {
   }
 });
 
-// Обработка pre-checkout запросов
-bot.on('pre_checkout_query', async (preCheckoutQuery) => {
-  try {
-    console.log('Pre-checkout query received:', preCheckoutQuery.id);
-    await bot.answerPreCheckoutQuery(preCheckoutQuery.id, true);
-  } catch (error) {
-    console.error('Pre-checkout query error:', error);
-    try {
-      await bot.answerPreCheckoutQuery(preCheckoutQuery.id, false, 'Ошибка обработки платежа');
-    } catch (answerError) {
-      console.error('Error answering pre-checkout query:', answerError);
-    }
-  }
-});
-
 // Обработка успешных платежей
 bot.on('successful_payment', async (msg) => {
   const { successful_payment } = msg;
@@ -285,7 +150,8 @@ bot.on('successful_payment', async (msg) => {
         currency: 'XTR',
         payload: successful_payment.invoice_payload,
         telegram_payment_charge_id: successful_payment.telegram_payment_charge_id,
-        provider_payment_charge_id: successful_payment.provider_payment_charge_id
+        provider_payment_charge_id: successful_payment.provider_payment_charge_id,
+        status: 'completed'
       });
     
     console.log('✅ Donation logged to database');
@@ -320,15 +186,6 @@ ${firstName}, ты потрясающий! Твое пожертвование �
   } catch (error) {
     console.error('Error sending thank you message:', error);
   }
-});
-
-// Обработка ошибок бота
-bot.on('polling_error', (error) => {
-  console.error('Telegram polling error:', error);
-});
-
-bot.on('webhook_error', (error) => {
-  console.error('Telegram webhook error:', error);
 });
 
 // Главная страница
@@ -457,6 +314,13 @@ app.put('/api/tasks/:id', async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
     
+    // Если отмечаем как выполненную, добавляем completed_at
+    if (updates.completed && !updates.completed_at) {
+      updates.completed_at = new Date().toISOString();
+    } else if (!updates.completed) {
+      updates.completed_at = null;
+    }
+    
     const { data: task, error } = await supabaseAdmin
       .from('tasks')
       .update({ ...updates, updated_at: new Date().toISOString() })
@@ -491,12 +355,22 @@ app.delete('/api/tasks/:id', async (req, res) => {
   }
 });
 
+// Настройка webhook для бота
+async function setupWebhook() {
+  try {
+    const webhookUrl = `${process.env.APP_URL}/webhook/${process.env.TELEGRAM_BOT_TOKEN}`;
+    await bot.setWebHook(webhookUrl);
+    console.log('✅ Webhook установлен:', webhookUrl);
+  } catch (error) {
+    console.error('❌ Ошибка установки webhook:', error);
+  }
+}
+
 // Запуск сервера
 app.listen(PORT, async () => {
   console.log(`🚀 Taskly server running on port ${PORT}`);
   console.log(`📱 App URL: ${process.env.APP_URL}`);
   
-  await checkBotPermissions();
   await setupWebhook();
   
   console.log('✅ Server ready!');
@@ -514,13 +388,4 @@ process.on('SIGINT', async () => {
   }
   
   process.exit(0);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  process.exit(1);
 });
