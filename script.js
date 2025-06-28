@@ -47,12 +47,12 @@ class TasklyApp {
         tg.ready();
         tg.expand();
         
-        // Принудительно применяем тему
-        this.applyTheme(tg.colorScheme);
+        // Применяем тему сразу
+        this.applyTheme(tg.colorScheme || 'light');
         
         // Отслеживаем изменения темы
         tg.onEvent('themeChanged', () => {
-            this.applyTheme(tg.colorScheme);
+            this.applyTheme(tg.colorScheme || 'light');
         });
         
         // Настройка главной кнопки
@@ -71,19 +71,26 @@ class TasklyApp {
         
         // Убираем все классы темы
         document.documentElement.classList.remove('dark-theme', 'light-theme');
+        document.body.classList.remove('dark-theme', 'light-theme');
         
+        // Применяем новую тему
         if (colorScheme === 'dark') {
             document.documentElement.classList.add('dark-theme');
+            document.body.classList.add('dark-theme');
+            console.log('Dark theme applied');
         } else {
             document.documentElement.classList.add('light-theme');
+            document.body.classList.add('light-theme');
+            console.log('Light theme applied');
         }
         
-        // Принудительное обновление CSS переменных
-        setTimeout(() => {
-            document.body.style.display = 'none';
-            document.body.offsetHeight; // Trigger reflow
-            document.body.style.display = '';
-        }, 50);
+        // Принудительное обновление стилей
+        requestAnimationFrame(() => {
+            document.body.style.opacity = '0.99';
+            setTimeout(() => {
+                document.body.style.opacity = '';
+            }, 10);
+        });
     }
 
     setupLogo() {
@@ -147,7 +154,7 @@ class TasklyApp {
         return first + last || 'U';
     }
 
-    // Исправленная работа с часовыми поясами
+    // Получение часового пояса пользователя
     getUserTimezone() {
         if (this.settings.timezone === 'auto') {
             try {
@@ -159,62 +166,45 @@ class TasklyApp {
         return this.settings.timezone;
     }
 
-    // Конвертация локального времени пользователя в UTC для сервера
+    // ИСПРАВЛЕННАЯ конвертация локального времени в UTC
     convertLocalToUTC(localDateTimeString) {
         if (!localDateTimeString) return null;
         
         try {
-            // Создаем объект Date из строки datetime-local
-            const localDate = new Date(localDateTimeString);
-            
             // Получаем часовой пояс пользователя
             const userTimezone = this.getUserTimezone();
             
-            // Создаем дату в часовом поясе пользователя
-            const formatter = new Intl.DateTimeFormat('en-CA', {
-                timeZone: userTimezone,
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
+            // Парсим строку datetime-local как дату в часовом поясе пользователя
+            const localDateTime = localDateTimeString + ':00'; // Добавляем секунды если их нет
+            
+            // Создаем дату в UTC, интерпретируя введенное время как время в часовом поясе пользователя
+            const tempDate = new Date(localDateTime + 'Z'); // Временно как UTC
+            const utcTime = tempDate.getTime();
+            
+            // Получаем смещение часового пояса в миллисекундах
+            const now = new Date();
+            const utcNow = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const localNow = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+            const timezoneOffsetMs = localNow.getTime() - utcNow.getTime();
+            
+            // Корректируем UTC время с учетом смещения
+            const correctedUTC = new Date(utcTime - timezoneOffsetMs);
+            
+            console.log('Converting to UTC:', {
+                input: localDateTimeString,
+                userTimezone,
+                timezoneOffsetMs: timezoneOffsetMs / (1000 * 60) + ' minutes',
+                result: correctedUTC.toISOString()
             });
-            
-            const parts = formatter.formatToParts(localDate);
-            const partsObj = {};
-            parts.forEach(part => {
-                partsObj[part.type] = part.value;
-            });
-            
-            // Создаем строку ISO в часовом поясе пользователя
-            const isoString = `${partsObj.year}-${partsObj.month}-${partsObj.day}T${partsObj.hour}:${partsObj.minute}:${partsObj.second}`;
-            
-            // Создаем дату и конвертируем в UTC
-            const dateInUserTZ = new Date(isoString);
-            
-            // Получаем смещение часового пояса в минутах
-            const utcTime = dateInUserTZ.getTime();
-            const utcDate = new Date(utcTime);
-            
-            // Получаем смещение для конкретного часового пояса
-            const tempDate = new Date(localDate.toLocaleString('en-US', { timeZone: 'UTC' }));
-            const tempDateInTZ = new Date(localDate.toLocaleString('en-US', { timeZone: userTimezone }));
-            const timezoneOffset = tempDateInTZ.getTime() - tempDate.getTime();
-            
-            // Применяем смещение
-            const correctedUTC = new Date(utcDate.getTime() - timezoneOffset);
             
             return correctedUTC.toISOString();
         } catch (error) {
             console.error('Date conversion error:', error);
-            // Fallback - просто конвертируем как есть
             return new Date(localDateTimeString).toISOString();
         }
     }
 
-    // Конвертация UTC с сервера в локальное время пользователя
+    // ИСПРАВЛЕННАЯ конвертация UTC в локальное время
     convertUTCToLocal(utcDateString) {
         if (!utcDateString) return '';
         
@@ -222,17 +212,32 @@ class TasklyApp {
             const utcDate = new Date(utcDateString);
             const userTimezone = this.getUserTimezone();
             
-            // Конвертируем в часовой пояс пользователя
-            const localDate = new Date(utcDate.toLocaleString('en-US', { timeZone: userTimezone }));
+            // Получаем смещение часового пояса
+            const now = new Date();
+            const utcNow = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const localNow = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+            const timezoneOffsetMs = localNow.getTime() - utcNow.getTime();
+            
+            // Применяем смещение к UTC дате
+            const localDate = new Date(utcDate.getTime() + timezoneOffsetMs);
             
             // Форматируем для datetime-local input
-            const year = localDate.getFullYear();
-            const month = String(localDate.getMonth() + 1).padStart(2, '0');
-            const day = String(localDate.getDate()).padStart(2, '0');
-            const hours = String(localDate.getHours()).padStart(2, '0');
-            const minutes = String(localDate.getMinutes()).padStart(2, '0');
+            const year = localDate.getUTCFullYear();
+            const month = String(localDate.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(localDate.getUTCDate()).padStart(2, '0');
+            const hours = String(localDate.getUTCHours()).padStart(2, '0');
+            const minutes = String(localDate.getUTCMinutes()).padStart(2, '0');
             
-            return `${year}-${month}-${day}T${hours}:${minutes}`;
+            const result = `${year}-${month}-${day}T${hours}:${minutes}`;
+            
+            console.log('Converting from UTC:', {
+                input: utcDateString,
+                userTimezone,
+                timezoneOffsetMs: timezoneOffsetMs / (1000 * 60) + ' minutes',
+                result
+            });
+            
+            return result;
         } catch (error) {
             console.error('UTC conversion error:', error);
             return new Date(utcDateString).toISOString().slice(0, 16);
@@ -624,7 +629,7 @@ class TasklyApp {
                     title,
                     description,
                     priority,
-                    dueDate: this.convertLocalToUTC(dueDate) // Правильная конвертация в UTC
+                    dueDate: this.convertLocalToUTC(dueDate)
                 })
             });
 
@@ -731,7 +736,7 @@ class TasklyApp {
                     title,
                     description: description || null,
                     priority,
-                    due_date: this.convertLocalToUTC(dueDate) // Правильная конвертация в UTC
+                    due_date: this.convertLocalToUTC(dueDate)
                 })
             });
 
@@ -811,7 +816,11 @@ class TasklyApp {
 
     groupTasksByTime(tasks) {
         const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const userTimezone = this.getUserTimezone();
+        
+        // Получаем текущую дату в часовом поясе пользователя
+        const todayInUserTZ = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+        const today = new Date(todayInUserTZ.getFullYear(), todayInUserTZ.getMonth(), todayInUserTZ.getDate());
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         const nextWeek = new Date(today);
@@ -832,11 +841,17 @@ class TasklyApp {
                 return;
             }
 
-            // Конвертируем UTC дату с сервера в локальную дату пользователя
+            // Конвертируем UTC дату с сервера в дату в часовом поясе пользователя
             const dueDateUTC = new Date(task.due_date);
-            const userTimezone = this.getUserTimezone();
-            const dueDate = new Date(dueDateUTC.toLocaleString('en-US', { timeZone: userTimezone }));
-            const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+            
+            // Получаем смещение часового пояса
+            const utcNow = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+            const localNow = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+            const timezoneOffsetMs = localNow.getTime() - utcNow.getTime();
+            
+            // Применяем смещение к UTC дате
+            const dueDateInUserTZ = new Date(dueDateUTC.getTime() + timezoneOffsetMs);
+            const dueDateOnly = new Date(dueDateInUserTZ.getFullYear(), dueDateInUserTZ.getMonth(), dueDateInUserTZ.getDate());
 
             if (dueDateOnly < today) {
                 groups.overdue.tasks.push(task);
@@ -879,15 +894,24 @@ class TasklyApp {
         // Конвертируем UTC в локальное время пользователя для отображения
         const dueDateUTC = new Date(dateString);
         const userTimezone = this.getUserTimezone();
-        const date = new Date(dueDateUTC.toLocaleString('en-US', { timeZone: userTimezone }));
         
+        // Получаем смещение часового пояса
         const now = new Date();
-        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const utcNow = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+        const localNow = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+        const timezoneOffsetMs = localNow.getTime() - utcNow.getTime();
+        
+        // Применяем смещение к UTC дате
+        const dateInUserTZ = new Date(dueDateUTC.getTime() + timezoneOffsetMs);
+        
+        // Получаем сегодняшнюю дату в часовом поясе пользователя
+        const todayInUserTZ = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+        const today = new Date(todayInUserTZ.getFullYear(), todayInUserTZ.getMonth(), todayInUserTZ.getDate());
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         
-        const dueDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-        const timeString = date.toLocaleTimeString('ru-RU', { 
+        const dueDateOnly = new Date(dateInUserTZ.getFullYear(), dateInUserTZ.getMonth(), dateInUserTZ.getDate());
+        const timeString = dateInUserTZ.toLocaleTimeString('ru-RU', { 
             hour: '2-digit', 
             minute: '2-digit' 
         });
@@ -904,7 +928,7 @@ class TasklyApp {
             if (daysDiff <= 7) {
                 return `Через ${daysDiff} дн. в ${timeString}`;
             } else {
-                return `${date.toLocaleDateString('ru-RU')} в ${timeString}`;
+                return `${dateInUserTZ.toLocaleDateString('ru-RU')} в ${timeString}`;
             }
         }
     }
