@@ -7,7 +7,8 @@ class TasklyApp {
         this.settings = {
             timezone: 'auto',
             notificationsEnabled: true,
-            soundEnabled: true
+            soundEnabled: true,
+            theme: 'auto'
         };
         this.timeDisplayInterval = null;
         this.init();
@@ -46,22 +47,23 @@ class TasklyApp {
         tg.ready();
         tg.expand();
         
-        // Применяем тему сразу и отслеживаем изменения
-        this.applyTheme(tg.colorScheme);
+        // Применяем тему на основе настроек пользователя или системы
+        this.applyInitialTheme(tg);
         
         // Отслеживаем изменения темы
         tg.onEvent('themeChanged', () => {
-            console.log('Theme changed to:', tg.colorScheme);
+            console.log('Telegram theme changed to:', tg.colorScheme);
             this.applyTheme(tg.colorScheme);
         });
         
-        // Дополнительно отслеживаем изменения через наблюдатель
+        // Дополнительно отслеживаем системные изменения темы
         if (window.matchMedia) {
             const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
-            darkModeQuery.addListener(() => {
-                // Только если Telegram не задал тему явно
-                if (!tg.colorScheme || tg.colorScheme === 'auto') {
-                    this.applyTheme(darkModeQuery.matches ? 'dark' : 'light');
+            darkModeQuery.addEventListener('change', (e) => {
+                console.log('System theme changed to:', e.matches ? 'dark' : 'light');
+                // Применяем только если настройка "авто"
+                if (this.settings.theme === 'auto') {
+                    this.applyTheme(e.matches ? 'dark' : 'light');
                 }
             });
         }
@@ -77,16 +79,37 @@ class TasklyApp {
         document.getElementById('app').style.display = 'block';
     }
 
+    applyInitialTheme(tg) {
+        // Определяем тему на основе настроек пользователя
+        let themeToApply = 'light';
+        
+        if (this.settings.theme === 'dark') {
+            themeToApply = 'dark';
+        } else if (this.settings.theme === 'light') {
+            themeToApply = 'light';
+        } else {
+            // Авто режим - берем из Telegram или системы
+            if (tg.colorScheme) {
+                themeToApply = tg.colorScheme;
+            } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                themeToApply = 'dark';
+            }
+        }
+        
+        console.log('Initial theme:', themeToApply);
+        this.applyTheme(themeToApply);
+    }
+
     applyTheme(colorScheme) {
         console.log('Applying theme:', colorScheme);
         
         // Определяем тему
-        const isDark = colorScheme === 'dark' || 
-                      (colorScheme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDark = colorScheme === 'dark';
         
         // Убираем все классы темы
         document.documentElement.classList.remove('dark-theme', 'light-theme');
         document.body.classList.remove('dark-theme', 'light-theme');
+        document.documentElement.removeAttribute('data-theme');
         
         // Принудительно устанавливаем новую тему
         if (isDark) {
@@ -101,32 +124,34 @@ class TasklyApp {
             console.log('Light theme applied');
         }
         
-        // Принудительное обновление всех элементов
-        setTimeout(() => {
-            const allElements = document.querySelectorAll('*');
-            allElements.forEach(el => {
-                if (el.style) {
-                    el.style.transition = 'none';
-                    void el.offsetHeight; // Trigger reflow
-                    el.style.transition = '';
-                }
-            });
-        }, 10);
+        // Принудительное обновление стилей
+        requestAnimationFrame(() => {
+            document.body.style.display = 'none';
+            document.body.offsetHeight; // Trigger reflow
+            document.body.style.display = '';
+        });
     }
 
     setupLogo() {
-        const logoUrl = window.LOGO_IMAGE_URL;
+        const logoImg = document.getElementById('logoImage');
+        const userInitials = document.getElementById('userInitials');
         
-        if (logoUrl) {
-            const logoImg = document.getElementById('logoImage');
-            const userInitials = document.getElementById('userInitials');
-            
+        // Используем локальный логотип
+        const logoUrl = '/logo2.png';
+        
+        if (logoImg && userInitials) {
             logoImg.src = logoUrl;
             logoImg.style.display = 'block';
             userInitials.style.display = 'none';
             
+            logoImg.onload = () => {
+                console.log('Logo loaded successfully');
+                logoImg.style.display = 'block';
+                userInitials.style.display = 'none';
+            };
+            
             logoImg.onerror = () => {
-                // Если логотип не загружается, показываем иконку приложения
+                console.log('Logo failed to load, showing icon');
                 logoImg.style.display = 'none';
                 userInitials.style.display = 'flex';
                 userInitials.innerHTML = `
@@ -135,14 +160,6 @@ class TasklyApp {
                     </svg>
                 `;
             };
-        } else {
-            // Если нет URL логотипа, показываем иконку приложения по умолчанию
-            const userInitials = document.getElementById('userInitials');
-            userInitials.innerHTML = `
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            `;
         }
     }
 
@@ -176,15 +193,8 @@ class TasklyApp {
     }
 
     updateUserInfo() {
-        // Больше не обновляем инициалы пользователя в header
         // Header теперь показывает только логотип приложения
         return;
-    }
-
-    getInitials(firstName, lastName) {
-        const first = firstName?.charAt(0)?.toUpperCase() || '';
-        const last = lastName?.charAt(0)?.toUpperCase() || '';
-        return first + last || 'U';
     }
 
     getUserTimezone() {
@@ -198,13 +208,10 @@ class TasklyApp {
         return this.settings.timezone;
     }
 
-    // ПРОСТАЯ И ПРАВИЛЬНАЯ конвертация локального времени в UTC
     convertLocalToUTC(localDateTimeString) {
         if (!localDateTimeString) return null;
         
         try {
-            // Просто создаем дату из локальной строки и сохраняем как UTC
-            // Пользователь ввел время в своем часовом поясе, мы сохраняем его как есть в UTC
             const localDate = new Date(localDateTimeString);
             const result = localDate.toISOString();
             
@@ -222,14 +229,12 @@ class TasklyApp {
         }
     }
 
-    // ПРОСТАЯ И ПРАВИЛЬНАЯ конвертация UTC в локальное время
     convertUTCToLocal(utcDateString) {
         if (!utcDateString) return '';
         
         try {
             const utcDate = new Date(utcDateString);
             
-            // Просто форматируем дату для datetime-local инпута
             const year = utcDate.getFullYear();
             const month = String(utcDate.getMonth() + 1).padStart(2, '0');
             const day = String(utcDate.getDate()).padStart(2, '0');
@@ -260,6 +265,7 @@ class TasklyApp {
             
             if (result.success && result.settings) {
                 this.settings = { ...this.settings, ...result.settings };
+                console.log('Loaded settings:', this.settings);
             }
         } catch (error) {
             console.error('Failed to load settings from server:', error);
@@ -288,9 +294,14 @@ class TasklyApp {
     }
 
     updateSettingsUI() {
-        document.getElementById('timezoneSelect').value = this.settings.timezone;
-        document.getElementById('notificationsEnabled').checked = this.settings.notificationsEnabled;
-        document.getElementById('soundEnabled').checked = this.settings.soundEnabled;
+        const timezoneSelect = document.getElementById('timezoneSelect');
+        const notificationsEnabled = document.getElementById('notificationsEnabled');
+        const soundEnabled = document.getElementById('soundEnabled');
+        
+        if (timezoneSelect) timezoneSelect.value = this.settings.timezone;
+        if (notificationsEnabled) notificationsEnabled.checked = this.settings.notificationsEnabled;
+        if (soundEnabled) soundEnabled.checked = this.settings.soundEnabled;
+        
         this.updateCurrentTime();
     }
 
@@ -309,9 +320,15 @@ class TasklyApp {
             });
             
             const timezoneName = this.getTimezoneDisplayName(timezone);
-            document.getElementById('currentTime').textContent = `${timeString} (${timezoneName})`;
+            const currentTimeElement = document.getElementById('currentTime');
+            if (currentTimeElement) {
+                currentTimeElement.textContent = `${timeString} (${timezoneName})`;
+            }
         } catch (error) {
-            document.getElementById('currentTime').textContent = 'Неверный часовой пояс';
+            const currentTimeElement = document.getElementById('currentTime');
+            if (currentTimeElement) {
+                currentTimeElement.textContent = 'Неверный часовой пояс';
+            }
         }
     }
 
@@ -347,29 +364,34 @@ class TasklyApp {
         const taskInput = document.getElementById('taskTitle');
         const addBtn = document.getElementById('addTaskBtn');
         
-        taskInput.addEventListener('input', (e) => {
-            const hasText = e.target.value.trim().length > 0;
-            addBtn.disabled = !hasText;
-            
-            if (window.Telegram?.WebApp?.MainButton) {
-                if (hasText) {
-                    window.Telegram.WebApp.MainButton.show();
-                } else {
-                    window.Telegram.WebApp.MainButton.hide();
+        if (taskInput && addBtn) {
+            taskInput.addEventListener('input', (e) => {
+                const hasText = e.target.value.trim().length > 0;
+                addBtn.disabled = !hasText;
+                
+                if (window.Telegram?.WebApp?.MainButton) {
+                    if (hasText) {
+                        window.Telegram.WebApp.MainButton.show();
+                    } else {
+                        window.Telegram.WebApp.MainButton.hide();
+                    }
                 }
-            }
-        });
-        
-        taskInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !addBtn.disabled) {
-                this.addTask();
-            }
-        });
-        
-        addBtn.addEventListener('click', () => this.addTask());
+            });
+            
+            taskInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter' && !addBtn.disabled) {
+                    this.addTask();
+                }
+            });
+            
+            addBtn.addEventListener('click', () => this.addTask());
+        }
         
         // Расширенные опции
-        document.getElementById('toggleOptions').addEventListener('click', this.toggleExpandedOptions.bind(this));
+        const toggleOptions = document.getElementById('toggleOptions');
+        if (toggleOptions) {
+            toggleOptions.addEventListener('click', this.toggleExpandedOptions.bind(this));
+        }
         
         // Устанавливаем автоматическое время
         this.setDefaultDateTime();
@@ -380,35 +402,58 @@ class TasklyApp {
         });
         
         // Кнопка настроек
-        document.getElementById('settingsBtn').addEventListener('click', () => this.openSettings());
+        const settingsBtn = document.getElementById('settingsBtn');
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.openSettings());
+        }
         
         // Модальные окна
-        document.getElementById('closeModal').addEventListener('click', () => this.closeModal());
-        document.getElementById('saveTaskBtn').addEventListener('click', () => this.saveTask());
-        document.getElementById('deleteTaskBtn').addEventListener('click', () => this.deleteTaskFromModal());
+        const closeModal = document.getElementById('closeModal');
+        const saveTaskBtn = document.getElementById('saveTaskBtn');
+        const deleteTaskBtn = document.getElementById('deleteTaskBtn');
         
-        document.getElementById('closeSettingsModal').addEventListener('click', () => this.closeSettingsModal());
-        document.getElementById('saveSettingsBtn').addEventListener('click', () => this.saveSettingsFromModal());
+        if (closeModal) closeModal.addEventListener('click', () => this.closeModal());
+        if (saveTaskBtn) saveTaskBtn.addEventListener('click', () => this.saveTask());
+        if (deleteTaskBtn) deleteTaskBtn.addEventListener('click', () => this.deleteTaskFromModal());
+        
+        const closeSettingsModal = document.getElementById('closeSettingsModal');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        
+        if (closeSettingsModal) closeSettingsModal.addEventListener('click', () => this.closeSettingsModal());
+        if (saveSettingsBtn) saveSettingsBtn.addEventListener('click', () => this.saveSettingsFromModal());
         
         // Отслеживание изменений в настройках
-        document.getElementById('timezoneSelect').addEventListener('change', () => {
-            this.updateCurrentTime();
-        });
+        const timezoneSelect = document.getElementById('timezoneSelect');
+        if (timezoneSelect) {
+            timezoneSelect.addEventListener('change', () => {
+                this.updateCurrentTime();
+            });
+        }
         
         // Поддержка проекта
         this.setupDonationListeners();
         
         // Клики вне модальных окон
-        document.getElementById('editModal').addEventListener('click', (e) => {
-            if (e.target.id === 'editModal') this.closeModal();
-        });
+        const editModal = document.getElementById('editModal');
+        const settingsModal = document.getElementById('settingsModal');
         
-        document.getElementById('settingsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'settingsModal') this.closeSettingsModal();
-        });
+        if (editModal) {
+            editModal.addEventListener('click', (e) => {
+                if (e.target.id === 'editModal') this.closeModal();
+            });
+        }
+        
+        if (settingsModal) {
+            settingsModal.addEventListener('click', (e) => {
+                if (e.target.id === 'settingsModal') this.closeSettingsModal();
+            });
+        }
     }
 
     setDefaultDateTime() {
+        const taskDueDate = document.getElementById('taskDueDate');
+        if (!taskDueDate) return;
+        
         const now = new Date();
         now.setHours(now.getHours() + 1);
         now.setMinutes(0);
@@ -420,12 +465,14 @@ class TasklyApp {
         const minutes = String(now.getMinutes()).padStart(2, '0');
         
         const dateString = `${year}-${month}-${day}T${hours}:${minutes}`;
-        document.getElementById('taskDueDate').value = dateString;
+        taskDueDate.value = dateString;
     }
 
     setupDonationListeners() {
         const amountInput = document.getElementById('donationAmount');
         const donateBtn = document.getElementById('donateBtn');
+        
+        if (!amountInput || !donateBtn) return;
         
         amountInput.addEventListener('input', (e) => {
             const amount = parseInt(e.target.value);
@@ -507,8 +554,11 @@ class TasklyApp {
     handlePaymentSuccess(amount) {
         this.showNotification(`Спасибо за поддержку! ${amount} ⭐`, 'success');
         
-        document.getElementById('donationAmount').value = '';
-        document.getElementById('donateBtn').disabled = true;
+        const donationAmount = document.getElementById('donationAmount');
+        const donateBtn = document.getElementById('donateBtn');
+        
+        if (donationAmount) donationAmount.value = '';
+        if (donateBtn) donateBtn.disabled = true;
         
         this.hapticFeedback('medium');
         this.celebratePayment();
@@ -516,17 +566,20 @@ class TasklyApp {
 
     celebratePayment() {
         const supportCard = document.querySelector('.support-card');
-        supportCard.style.transform = 'scale(1.02)';
-        supportCard.style.boxShadow = '0 12px 40px rgba(0, 122, 255, 0.4)';
-        
-        setTimeout(() => {
-            supportCard.style.transform = '';
-            supportCard.style.boxShadow = '';
-        }, 500);
+        if (supportCard) {
+            supportCard.style.transform = 'scale(1.02)';
+            supportCard.style.boxShadow = '0 12px 40px rgba(0, 122, 255, 0.4)';
+            
+            setTimeout(() => {
+                supportCard.style.transform = '';
+                supportCard.style.boxShadow = '';
+            }, 500);
+        }
     }
 
     setDonateButtonLoading(loading) {
         const donateBtn = document.getElementById('donateBtn');
+        if (!donateBtn) return;
         
         if (loading) {
             donateBtn.classList.add('loading');
@@ -547,7 +600,8 @@ class TasklyApp {
                 Поддержать
             `;
             
-            const amount = parseInt(document.getElementById('donationAmount').value);
+            const donationAmount = document.getElementById('donationAmount');
+            const amount = donationAmount ? parseInt(donationAmount.value) : 0;
             donateBtn.disabled = !amount || amount < 1 || amount > 2500;
         }
     }
@@ -555,6 +609,8 @@ class TasklyApp {
     toggleExpandedOptions() {
         const options = document.getElementById('expandedOptions');
         const button = document.getElementById('toggleOptions');
+        
+        if (!options || !button) return;
         
         if (options.style.display === 'none') {
             options.style.display = 'block';
@@ -566,20 +622,26 @@ class TasklyApp {
     }
 
     openSettings() {
-        document.getElementById('settingsModal').style.display = 'flex';
-        this.updateSettingsUI();
-        
-        if (this.timeDisplayInterval) {
-            clearInterval(this.timeDisplayInterval);
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'flex';
+            this.updateSettingsUI();
+            
+            if (this.timeDisplayInterval) {
+                clearInterval(this.timeDisplayInterval);
+            }
+            
+            this.timeDisplayInterval = setInterval(() => {
+                this.updateCurrentTime();
+            }, 1000);
         }
-        
-        this.timeDisplayInterval = setInterval(() => {
-            this.updateCurrentTime();
-        }, 1000);
     }
 
     closeSettingsModal() {
-        document.getElementById('settingsModal').style.display = 'none';
+        const settingsModal = document.getElementById('settingsModal');
+        if (settingsModal) {
+            settingsModal.style.display = 'none';
+        }
         
         if (this.timeDisplayInterval) {
             clearInterval(this.timeDisplayInterval);
@@ -588,9 +650,13 @@ class TasklyApp {
     }
 
     async saveSettingsFromModal() {
-        this.settings.timezone = document.getElementById('timezoneSelect').value;
-        this.settings.notificationsEnabled = document.getElementById('notificationsEnabled').checked;
-        this.settings.soundEnabled = document.getElementById('soundEnabled').checked;
+        const timezoneSelect = document.getElementById('timezoneSelect');
+        const notificationsEnabled = document.getElementById('notificationsEnabled');
+        const soundEnabled = document.getElementById('soundEnabled');
+        
+        if (timezoneSelect) this.settings.timezone = timezoneSelect.value;
+        if (notificationsEnabled) this.settings.notificationsEnabled = notificationsEnabled.checked;
+        if (soundEnabled) this.settings.soundEnabled = soundEnabled.checked;
         
         await this.saveSettings();
         this.closeSettingsModal();
@@ -618,12 +684,18 @@ class TasklyApp {
     }
 
     async addTask() {
-        const title = document.getElementById('taskTitle').value.trim();
+        const taskTitle = document.getElementById('taskTitle');
+        if (!taskTitle) return;
+        
+        const title = taskTitle.value.trim();
         if (!title) return;
 
-        const description = document.getElementById('taskDescription').value.trim();
+        const taskDescription = document.getElementById('taskDescription');
+        const taskDueDate = document.getElementById('taskDueDate');
+        
+        const description = taskDescription ? taskDescription.value.trim() : '';
         const priority = this.getSelectedPriority('taskPriority');
-        const dueDate = document.getElementById('taskDueDate').value;
+        const dueDate = taskDueDate ? taskDueDate.value : '';
 
         try {
             const response = await fetch('/api/tasks', {
@@ -710,28 +782,42 @@ class TasklyApp {
 
         this.editingTaskId = taskId;
         
-        document.getElementById('editTaskTitle').value = task.title;
-        document.getElementById('editTaskDescription').value = task.description || '';
+        const editTaskTitle = document.getElementById('editTaskTitle');
+        const editTaskDescription = document.getElementById('editTaskDescription');
+        const editTaskDueDate = document.getElementById('editTaskDueDate');
+        const editModal = document.getElementById('editModal');
+        
+        if (editTaskTitle) editTaskTitle.value = task.title;
+        if (editTaskDescription) editTaskDescription.value = task.description || '';
         this.setSelectedPriority('editTaskPriority', task.priority);
         
-        // Правильная конвертация UTC в локальное время
-        document.getElementById('editTaskDueDate').value = this.convertUTCToLocal(task.due_date);
+        if (editTaskDueDate) {
+            editTaskDueDate.value = this.convertUTCToLocal(task.due_date);
+        }
         
-        document.getElementById('editModal').style.display = 'flex';
+        if (editModal) {
+            editModal.style.display = 'flex';
+        }
     }
 
     async saveTask() {
         if (!this.editingTaskId) return;
 
-        const title = document.getElementById('editTaskTitle').value.trim();
+        const editTaskTitle = document.getElementById('editTaskTitle');
+        if (!editTaskTitle) return;
+        
+        const title = editTaskTitle.value.trim();
         if (!title) {
             this.showNotification('Название задачи не может быть пустым', 'error');
             return;
         }
 
-        const description = document.getElementById('editTaskDescription').value.trim();
+        const editTaskDescription = document.getElementById('editTaskDescription');
+        const editTaskDueDate = document.getElementById('editTaskDueDate');
+        
+        const description = editTaskDescription ? editTaskDescription.value.trim() : '';
         const priority = this.getSelectedPriority('editTaskPriority');
-        const dueDate = document.getElementById('editTaskDueDate').value;
+        const dueDate = editTaskDueDate ? editTaskDueDate.value : '';
 
         try {
             const response = await fetch(`/api/tasks/${this.editingTaskId}`, {
@@ -794,7 +880,10 @@ class TasklyApp {
     }
 
     closeModal() {
-        document.getElementById('editModal').style.display = 'none';
+        const editModal = document.getElementById('editModal');
+        if (editModal) {
+            editModal.style.display = 'none';
+        }
         this.editingTaskId = null;
     }
 
@@ -821,9 +910,6 @@ class TasklyApp {
 
     groupTasksByTime(tasks) {
         const now = new Date();
-        const userTimezone = this.getUserTimezone();
-        
-        // Получаем сегодняшнюю дату в локальном времени
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -845,7 +931,6 @@ class TasklyApp {
                 return;
             }
 
-            // Просто используем дату как есть - она уже в правильном формате
             const dueDate = new Date(task.due_date);
             const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
 
@@ -869,25 +954,33 @@ class TasklyApp {
 
     updateStats() {
         const activeTasks = this.tasks.filter(task => !task.completed).length;
-        document.getElementById('activeCount').textContent = activeTasks;
+        const activeCount = document.getElementById('activeCount');
+        if (activeCount) {
+            activeCount.textContent = activeTasks;
+        }
     }
 
     clearForm() {
-        document.getElementById('taskTitle').value = '';
-        document.getElementById('taskDescription').value = '';
+        const taskTitle = document.getElementById('taskTitle');
+        const taskDescription = document.getElementById('taskDescription');
+        const addTaskBtn = document.getElementById('addTaskBtn');
+        const expandedOptions = document.getElementById('expandedOptions');
+        const toggleOptions = document.getElementById('toggleOptions');
+        
+        if (taskTitle) taskTitle.value = '';
+        if (taskDescription) taskDescription.value = '';
         this.setSelectedPriority('taskPriority', 'medium');
-        document.getElementById('addTaskBtn').disabled = true;
+        if (addTaskBtn) addTaskBtn.disabled = true;
         
         this.setDefaultDateTime();
         
-        document.getElementById('expandedOptions').style.display = 'none';
-        document.getElementById('toggleOptions').classList.remove('expanded');
+        if (expandedOptions) expandedOptions.style.display = 'none';
+        if (toggleOptions) toggleOptions.classList.remove('expanded');
     }
 
     formatDueDate(dateString) {
         if (!dateString) return '';
         
-        // Просто отображаем дату как есть
         const date = new Date(dateString);
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -918,12 +1011,17 @@ class TasklyApp {
     }
 
     render() {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('mainContent').style.display = 'block';
+        const loading = document.getElementById('loading');
+        const mainContent = document.getElementById('mainContent');
+        
+        if (loading) loading.style.display = 'none';
+        if (mainContent) mainContent.style.display = 'block';
 
         const filteredTasks = this.getFilteredTasks();
         const tasksContainer = document.getElementById('tasksList');
         const emptyState = document.getElementById('emptyState');
+
+        if (!tasksContainer || !emptyState) return;
 
         tasksContainer.innerHTML = '';
 
@@ -962,6 +1060,8 @@ class TasklyApp {
     updateEmptyState() {
         const emptyTitle = document.getElementById('emptyTitle');
         const emptySubtitle = document.getElementById('emptySubtitle');
+        
+        if (!emptyTitle || !emptySubtitle) return;
         
         switch (this.currentFilter) {
             case 'active':
@@ -1022,11 +1122,14 @@ class TasklyApp {
     }
 
     showNotification(message, type = 'success') {
+        const notifications = document.getElementById('notifications');
+        if (!notifications) return;
+        
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
         
-        document.getElementById('notifications').appendChild(notification);
+        notifications.appendChild(notification);
         
         setTimeout(() => {
             notification.remove();
