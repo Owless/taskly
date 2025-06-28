@@ -1176,3 +1176,80 @@ select:focus-visible {
 .support-card {
     animation-delay: 0.3s;
 }
+/* Группы задач */
+.task-group {
+    margin-bottom: var(--spacing-xl);
+}
+
+.task-group-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--spacing);
+    padding: 0 var(--spacing-small);
+}
+
+.task-group-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.task-group-count {
+    background: var(--primary);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+}
+
+.task-group-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+}
+
+/* Задачи с просрочкой */
+.task-group:has(.task-item[data-overdue]) .task-group-title {
+    color: var(--danger);
+}
+
+.task-group:has(.task-item[data-overdue]) .task-group-count {
+    background: var(--danger);
+}
+
+/* Задачи на сегодня */
+.task-group:has(.task-item[data-today]) .task-group-title {
+    color: var(--warning);
+}
+
+.task-group:has(.task-item[data-today]) .task-group-count {
+    background: var(--warning);
+}
+
+/* Обновленные стили для task-meta */
+.task-due-date {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 600;
+}
+
+/* Просрочено - красный */
+.task-item[data-overdue] .task-due-date {
+    color: var(--danger);
+}
+
+/* Сегодня - оранжевый */
+.task-item[data-today] .task-due-date {
+    color: var(--warning);
+}
+
+/* Завтра - зеленый */
+.task-item[data-tomorrow] .task-due-date {
+    color: var(--accent);
+}
