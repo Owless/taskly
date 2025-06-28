@@ -56,8 +56,45 @@
     --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
+/* Светлая тема - принудительное применение */
+:root.light-theme,
+body.light-theme {
+    --primary: #007AFF !important;
+    --primary-light: #4DA3FF !important;
+    --primary-dark: #0056CC !important;
+    --secondary: #5AC8FA !important;
+    --accent: #34C759 !important;
+    --warning: #FF9500 !important;
+    --danger: #FF3B30 !important;
+    
+    --background: #F8FBFF !important;
+    --surface: #FFFFFF !important;
+    --surface-secondary: #F0F8FF !important;
+    --surface-elevated: #FFFFFF !important;
+    --text-primary: #1D1D1F !important;
+    --text-secondary: #6D6D80 !important;
+    --text-tertiary: #8E8E93 !important;
+    --border: #E3F2FD !important;
+    --border-light: #F0F8FF !important;
+    --shadow: rgba(0, 122, 255, 0.1) !important;
+    --shadow-elevated: rgba(0, 122, 255, 0.15) !important;
+    
+    /* Светлые цвета приоритетов */
+    --priority-low: #34C759 !important;
+    --priority-low-bg: rgba(52, 199, 89, 0.1) !important;
+    --priority-medium: #FF9500 !important;
+    --priority-medium-bg: rgba(255, 149, 0, 0.1) !important;
+    --priority-high: #FF3B30 !important;
+    --priority-high-bg: rgba(255, 59, 48, 0.1) !important;
+    
+    --gradient-primary: linear-gradient(135deg, #007AFF 0%, #5AC8FA 100%) !important;
+    --gradient-surface: linear-gradient(135deg, #FFFFFF 0%, #F8FBFF 100%) !important;
+    --gradient-support: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%) !important;
+}
+
 /* Темная тема - принудительное применение */
-.dark-theme {
+:root.dark-theme,
+body.dark-theme {
     --primary: #0A84FF !important;
     --primary-light: #409CFF !important;
     --primary-dark: #0056CC !important;
@@ -91,9 +128,9 @@
     --gradient-support: linear-gradient(135deg, #1E3A8A 0%, #1D4ED8 100%) !important;
 }
 
-/* Автоматическая темная тема */
+/* Автоматическая темная тема только для браузеров БЕЗ Telegram */
 @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not(.light-theme):not(.dark-theme) {
         --primary: #0A84FF;
         --primary-light: #409CFF;
         --primary-dark: #0056CC;
@@ -1443,7 +1480,7 @@ select:focus-visible {
     animation-delay: 0.3s;
 }
 
-/* Принудительное применение темной темы для всех элементов */
+/* Принудительное применение темных стилей */
 .dark-theme * {
     color-scheme: dark;
 }
