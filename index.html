@@ -337,18 +337,45 @@
         function updateDebugInfo() {
             const debugInfo = document.getElementById('debugInfo');
             if (debugInfo) {
+                const urlParams = new URLSearchParams(window.location.hash.substring(1));
+                const tgData = urlParams.get('tgWebAppData');
+                
                 debugInfo.innerHTML = `
                     <div>Telegram: ${typeof window.Telegram}</div>
                     <div>WebApp: ${typeof window.Telegram?.WebApp}</div>
                     <div>initData: ${window.Telegram?.WebApp?.initData ? 'exists' : 'none'}</div>
+                    <div>URL has tgWebAppData: ${window.location.href.includes('tgWebAppData') ? 'yes' : 'no'}</div>
                     <div>User-Agent: ${navigator.userAgent.includes('Telegram') ? 'Telegram' : 'Other'}</div>
                     <div>URL: ${window.location.href}</div>
+                    ${tgData ? `<div>TG Data found: ${tgData.substring(0, 100)}...</div>` : ''}
                 `;
             }
         }
         
         // Показываем отладочную информацию
         setTimeout(updateDebugInfo, 1000);
+        
+        // Также проверяем через 3 секунды
+        setTimeout(() => {
+            updateDebugInfo();
+            // Если приложение не загрузилось, показываем кнопку принудительного запуска
+            if (document.getElementById('app').style.display === 'none') {
+                const debugInfo = document.getElementById('debugInfo');
+                if (debugInfo) {
+                    debugInfo.innerHTML += '<br><button onclick="forceStart()" style="margin-top:10px;padding:8px 16px;background:#007AFF;color:white;border:none;border-radius:6px;">Принудительный запуск</button>';
+                }
+            }
+        }, 3000);
+        
+        // Функция принудительного запуска
+        window.forceStart = function() {
+            document.getElementById('accessDenied').style.display = 'none';
+            document.getElementById('app').style.display = 'block';
+            // Запускаем приложение принудительно
+            if (window.app) {
+                window.app.init();
+            }
+        };
     </script>
     <script src="script.js"></script>
 </body>
