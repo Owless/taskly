@@ -9,16 +9,12 @@ const {
   validatePagination 
 } = require('../middleware/validation');
 const rateLimit = require('../middleware/rateLimit');
-const { 
-  createTaskSchema, 
-  updateTaskSchema, 
-  taskFiltersSchema 
-} = require('../utils/validators');
+const { schemas } = require('../utils/validators');
 
 // Middleware для валидации
-const validateCreateTask = createValidationMiddleware(createTaskSchema);
-const validateUpdateTask = createValidationMiddleware(updateTaskSchema);
-const validateTaskFilters = createValidationMiddleware(taskFiltersSchema, 'query');
+const validateCreateTask = createValidationMiddleware(schemas.createTask);
+const validateUpdateTask = createValidationMiddleware(schemas.updateTask);
+const validateTaskFilters = createValidationMiddleware(schemas.taskFilters, 'query');
 
 // Middleware для загрузки задачи и проверки прав
 const loadTaskWithOwnership = [
